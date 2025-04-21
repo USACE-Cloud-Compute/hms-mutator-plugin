@@ -74,18 +74,19 @@ func BytesToCoordinateList(bytes []byte) (CoordinateList, error) {
 	}
 	return list, nil
 }
-func ReadFishNets(iomanager cc.IOManager, storeKey string, filePaths []string) (FishNetMap, error) {
+func ReadFishNets(iomanager cc.IOManager, storeKey string, filePaths []string, fishnetdirectory string) (FishNetMap, error) {
 	FishNetMap := make(map[string]CoordinateList)
 	store, err := iomanager.GetStore(storeKey)
 	if err != nil {
 		return FishNetMap, err
 	}
-	session, ok := store.Session.(cc.S3DataStore)
+	session, ok := store.Session.(*cc.S3DataStore)
 	if !ok {
 		return FishNetMap, errors.New(fmt.Sprintf("%v was not an s3datastore type", storeKey))
 	}
 	root := store.Parameters.GetStringOrFail("root")
 	for _, path := range filePaths {
+		path = fmt.Sprintf("%v%v", fishnetdirectory, path)
 		pathpart := strings.Replace(path, fmt.Sprintf("%v/", root), "", -1)
 		reader, err := session.Get(pathpart, "")
 		if err != nil {

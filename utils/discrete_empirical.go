@@ -54,18 +54,19 @@ func (ded DiscreteEmpiricalDistribution) Sample(probability float64) int {
 	}
 	return int(ded.bin_starts[len(ded.bin_starts)-1])
 }
-func ReadStormDistributions(iomanager cc.IOManager, storeKey string, filePaths []string) (StormTypeSeasonalityDistributionMap, error) {
+func ReadStormDistributions(iomanager cc.IOManager, storeKey string, filePaths []string, directory string) (StormTypeSeasonalityDistributionMap, error) {
 	StormTypeSeasonalityDistributionMap := make(map[string]DiscreteEmpiricalDistribution)
 	store, err := iomanager.GetStore(storeKey)
 	if err != nil {
 		return StormTypeSeasonalityDistributionMap, err
 	}
-	session, ok := store.Session.(cc.S3DataStore)
+	session, ok := store.Session.(*cc.S3DataStore)
 	if !ok {
 		return StormTypeSeasonalityDistributionMap, fmt.Errorf("%v was not an s3datastore type", storeKey)
 	}
 	root := store.Parameters.GetStringOrFail("root")
 	for _, path := range filePaths {
+		path = fmt.Sprintf("%v%v", directory, path)
 		pathpart := strings.Replace(path, fmt.Sprintf("%v/", root), "", -1)
 		reader, err := session.Get(pathpart, "")
 		if err != nil {

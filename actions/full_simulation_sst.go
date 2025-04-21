@@ -39,7 +39,10 @@ type EventResult struct {
 	BasinPath   string  `eventstore:"basin_path"`
 }
 
-func (frsst FullRealizationSST) Compute(realizationNumber int32, pm *cc.PluginManager) error {
+func InitFullRealizationSST(a cc.Action) *FullRealizationSST {
+	return &FullRealizationSST{action: a}
+}
+func (frsst *FullRealizationSST) Compute(realizationNumber int32, pm *cc.PluginManager) error {
 	a := frsst.action
 	//get parameters
 	///get storms
@@ -58,18 +61,18 @@ func (frsst FullRealizationSST) Compute(realizationNumber int32, pm *cc.PluginMa
 	if err != nil {
 		return err
 	}
-	fishNetMap, err := utils.ReadFishNets(a.IOManager, fishnetStoreKey, fishnetList)
+	fishNetMap, err := utils.ReadFishNets(a.IOManager, fishnetStoreKey, fishnetList, fishnetDirectory)
 	if err != nil {
 		return err
 	}
 	//storm type seasonality distributions
-	stormTypeSeasonalityDistributionDirectory := a.Attributes.GetStringOrFail("storm_type_seasonality_distibution_directory")
-	stormTypeSeasonalityDistributionStoreKey := a.Attributes.GetStringOrFail("storm_type_seasonality_distibution_store")
+	stormTypeSeasonalityDistributionDirectory := a.Attributes.GetStringOrFail("storm_type_seasonality_distribution_directory")
+	stormTypeSeasonalityDistributionStoreKey := a.Attributes.GetStringOrFail("storm_type_seasonality_distribution_store")
 	stormTypeDistributionList, err := utils.ListAllPaths(a.IOManager, stormTypeSeasonalityDistributionStoreKey, stormTypeSeasonalityDistributionDirectory, "*.csv")
 	if err != nil {
 		return err
 	}
-	stormTypeSeasonalityDistributionsMap, err := utils.ReadStormDistributions(a.IOManager, stormTypeSeasonalityDistributionStoreKey, stormTypeDistributionList)
+	stormTypeSeasonalityDistributionsMap, err := utils.ReadStormDistributions(a.IOManager, stormTypeSeasonalityDistributionStoreKey, stormTypeDistributionList, stormTypeSeasonalityDistributionDirectory)
 	if err != nil {
 		return err
 	}

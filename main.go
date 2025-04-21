@@ -234,6 +234,13 @@ func main() {
 				outbytes = append(outbytes, fmt.Sprintf("%v,%v,%v,%v\n", output.AllStormsAllLocations[indexes[i]].StormName, output.AllStormsAllLocations[indexes[i]].Coordinate.X, output.AllStormsAllLocations[indexes[i]].Coordinate.Y, output.AllStormsAllLocations[indexes[i]].IsValid)...)
 			}
 			utils.PutFile(outbytes, pm.IOManager, outputDataSource, "default")
+		case "full_simulation_sst":
+			sst := actions.InitFullRealizationSST(a)
+			err = sst.Compute(int32(pm.EventNumber()), pm)
+			if err != nil {
+				pm.Logger.Error(err.Error())
+				return
+			}
 		}
 	}
 	if err != nil {

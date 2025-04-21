@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"errors"
 	"fmt"
 	"os"
 
@@ -21,14 +20,14 @@ func ListAllPaths(ioManager cc.IOManager, StoreKey string, DirectoryKey string, 
 	if err != nil {
 		return pathList, err
 	}
-	session, ok := store.Session.(cc.S3DataStore)
+	session, ok := store.Session.(*cc.S3DataStore)
 	if !ok {
 		return pathList, fmt.Errorf("%v was not an s3datastore type", StoreKey)
 	}
-	rawSession, ok := session.GetSession().(filesapi.FileStore)
-	if !ok {
-		return pathList, errors.New("could not convert s3datastore raw session into filestore type")
-	}
+	rawSession := *session.GetFilestore()
+	//if !ok {
+	//	return pathList, errors.New("could not convert s3datastore raw session into filestore type")
+	//}
 	pageIdx := 0 //does page index start with 0 or 1?
 	input := filesapi.ListDirInput{
 		Path:   filesapi.PathConfig{Path: DirectoryKey},
@@ -44,7 +43,7 @@ func ListAllPaths(ioManager cc.IOManager, StoreKey string, DirectoryKey string, 
 		}
 		list := *fapiresult
 		for _, s := range list {
-			pathList = append(pathList, s.Path)
+			pathList = append(pathList, s.Name)
 		}
 		if len(list) < 1000 {
 			return pathList, nil
