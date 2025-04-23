@@ -25,10 +25,10 @@ This action will generate a full realization sized set of storms, placements, an
 8. get basin file name (should be `44*6*365` combinations.)
 9. store in tiledb database or dump to csv
 */
-type FullRealizationSST struct {
+type FullSimulationSST struct {
 	action cc.Action
 }
-type FullRealizationResult []EventResult
+type FullSimulationResult []EventResult
 
 type EventResult struct {
 	EventNumber int64   `eventstore:"event_number"`
@@ -40,10 +40,10 @@ type EventResult struct {
 	BasinPath   string  `eventstore:"basin_path"`
 }
 
-func InitFullRealizationSST(a cc.Action) *FullRealizationSST {
-	return &FullRealizationSST{action: a}
+func InitFullRealizationSST(a cc.Action) *FullSimulationSST {
+	return &FullSimulationSST{action: a}
 }
-func (frsst *FullRealizationSST) Compute(realizationNumber int32, pm *cc.PluginManager) error {
+func (frsst *FullSimulationSST) Compute(pm *cc.PluginManager) error {
 	a := frsst.action
 	//get parameters
 	//get output datasource
@@ -121,25 +121,25 @@ func (frsst *FullRealizationSST) Compute(realizationNumber int32, pm *cc.PluginM
 	if err != nil {
 		return err
 	}
-	results, err := compute(realizationNumber, stormList, calibrationEvents, basinRootDir, fishNetMap, stormTypeSeasonalityDistributionsMap, porStartDate, porEndDate, seeds, blocks)
+	results, err := compute(stormList, calibrationEvents, basinRootDir, fishNetMap, stormTypeSeasonalityDistributionsMap, porStartDate, porEndDate, seeds, blocks)
 	if err != nil {
 		return err
 	}
 	//write results to data stores
 	if outputDataSource.StoreName == "store" {
-		return writeResultsToTileDB(pm, outputDataSourceKey, results, outputDataSource.Name) //update this to not referenceblock store, and also not hardcode the name to "storms"
+		return writeResultsToTileDB(pm, outputDataSource.StoreName, results, outputDataSource.Name) //update this to not referenceblock store, and also not hardcode the name to "storms"
 	} else {
 		return writeResultsToCSV(a.IOManager, outputDataSource, results)
 	}
 
 }
-func compute(realizationNumber int32, stormNames []string, calibrationEventNames []string, basinRootDir string, fishnets utils.FishNetMap, seasonalDistributions utils.StormTypeSeasonalityDistributionMap, porStart time.Time, porEnd time.Time, seeds []utils.SeedSet, blocks []utils.Block) (FullRealizationResult, error) {
-	results := make(FullRealizationResult, 0)
+func compute(stormNames []string, calibrationEventNames []string, basinRootDir string, fishnets utils.FishNetMap, seasonalDistributions utils.StormTypeSeasonalityDistributionMap, porStart time.Time, porEnd time.Time, seeds []utils.SeedSet, blocks []utils.Block) (FullSimulationResult, error) {
+	results := make(FullSimulationResult, 0)
 	for _, b := range blocks {
-		if b.RealizationIndex == realizationNumber {
-			if b.BlockEventCount > 0 {
-				for en := b.BlockEventStart; en <= b.BlockEventEnd; en++ {
-					//create random number generator for event
+		if b.BlockEventCount > 0 {
+			for en := b.BlockEventStart; en <= b.BlockEventEnd; en++ {
+				//create random number generator for event
+				if int(en) < len(seeds) {
 					enRng := rand.New(rand.NewSource(seeds[en].EventSeed))
 					//sample storm name
 					stormName := stormNames[enRng.Intn(len(stormNames))]
@@ -205,14 +205,13 @@ func compute(realizationNumber int32, stormNames []string, calibrationEventNames
 					}
 					results = append(results, event)
 				}
-
 			}
 
 		}
 	}
 	return results, nil
 }
-func writeResultsToTileDB(pm *cc.PluginManager, storeKey string, results FullRealizationResult, tableName string) error {
+func writeResultsToTileDB(pm *cc.PluginManager, storeKey string, results FullSimulationResult, tableName string) error {
 	recordset, err := cc.NewEventStoreRecordset(pm, &results, storeKey, tableName)
 	if err != nil {
 		return err
@@ -223,7 +222,7 @@ func writeResultsToTileDB(pm *cc.PluginManager, storeKey string, results FullRea
 	}
 	return recordset.Write(&results)
 }
-func writeResultsToCSV(iomanager cc.IOManager, ds cc.DataSource, results FullRealizationResult) error {
+func writeResultsToCSV(iomanager cc.IOManager, ds cc.DataSource, results FullSimulationResult) error {
 	//create a header
 	data := "event_number,storm_path,x,y,storm_type,storm_date,basin_path"
 	for _, r := range results {

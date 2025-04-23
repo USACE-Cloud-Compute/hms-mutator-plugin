@@ -74,6 +74,9 @@ func BytesToCoordinateList(bytes []byte) (CoordinateList, error) {
 	}
 	return list, nil
 }
+
+var sem = make(chan int, 10)
+
 func ReadFishNets(iomanager cc.IOManager, storeKey string, filePaths []string, fishnetdirectory string) (FishNetMap, error) {
 	//this is a good candidate for paralellization.
 	FishNetMap := make(map[string]CoordinateList)
@@ -86,25 +89,51 @@ func ReadFishNets(iomanager cc.IOManager, storeKey string, filePaths []string, f
 		return FishNetMap, errors.New(fmt.Sprintf("%v was not an s3datastore type", storeKey))
 	}
 	root := store.Parameters.GetStringOrFail("root")
-	for _, path := range filePaths {
-		path = fmt.Sprintf("%v%v", fishnetdirectory, path)
-		pathpart := strings.Replace(path, fmt.Sprintf("%v/", root), "", -1)
-		reader, err := session.Get(pathpart, "")
-		if err != nil {
-			return FishNetMap, err
-		}
-		bytes, err := io.ReadAll(reader)
-		if err != nil {
-			return FishNetMap, err
-		}
-		coordlist, err := BytesToCoordinateList(bytes)
-		if err != nil {
-			return FishNetMap, err
-		}
-		parts := strings.Split(path, "/")
-		lastpart := parts[len(parts)-1]
-		name := strings.Split(lastpart, ".")[0]
-		FishNetMap[name] = coordlist
+
+	names := make([]string, len(filePaths))
+	coordinates := make([]CoordinateList, len(filePaths))
+
+	for i := 0; i < len(filePaths); i++ {
+
+		sem <- 1
+
+		go func(num int) error {
+			path := filePaths[num]
+			path = fmt.Sprintf("%v%v", fishnetdirectory, path)
+			pathpart := strings.Replace(path, fmt.Sprintf("%v/", root), "", -1)
+			reader, err := session.Get(pathpart, "")
+			if err != nil {
+				<-sem
+				return err
+			}
+			bytes, err := io.ReadAll(reader)
+			if err != nil {
+				<-sem
+				return err
+			}
+			coordlist, err := BytesToCoordinateList(bytes)
+			if err != nil {
+				<-sem
+				return err
+			}
+			parts := strings.Split(path, "/")
+			lastpart := parts[len(parts)-1]
+			name := strings.Split(lastpart, ".")[0]
+			names[num] = name
+			coordinates[num] = coordlist
+			//FishNetMap[name] = coordlist
+			<-sem
+			return nil
+
+		}(i)
+
+	}
+	//wg.Wait()
+	for i := 0; i < cap(sem); i++ {
+		sem <- i
+	}
+	for i, n := range names {
+		FishNetMap[n] = coordinates[i]
 	}
 	return FishNetMap, nil
 }

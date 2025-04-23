@@ -34,61 +34,15 @@ func main() {
 	}
 	// get the payload.
 	payload := pm.Payload
-	//validate the payload
-	err = validatePayload(payload)
-	if err != nil {
-		pm.Logger.Error(err.Error())
-	}
-	//download all required files as bytes
-	gridFileBytes, err := getInputBytes("HMS Model", ".grid", payload, pm)
-	if err != nil {
-		pm.Logger.Error(err.Error())
-		return
-	}
-	metFileBytes, err := getInputBytes("HMS Model", ".met", payload, pm)
-	if err != nil {
-		pm.Logger.Error(err.Error())
-		return
-	}
-	foundMCA := false
-	mcaFileBytes, err := getInputBytes("HMS Model", ".mca", payload, pm)
-	if err != nil {
-		err = nil
-		pm.Logger.Info("no *.mca file detected, variability is only reflected in storm selection and storm positioning in space and time.")
-	} else {
-		foundMCA = true
-	}
-	seedFileBytes, err := getInputBytes("seeds", "", payload, pm)
-	if err != nil {
-		pm.Logger.Error(err.Error())
-		return
-	}
-	seedSet, err := readSeedFile(seedFileBytes)
-	if err != nil {
-		pm.Logger.Error(err.Error())
-		return
-	}
-	transpositionDomainBytes, err := getInputBytes("TranspositionRegion", "", payload, pm)
-	if err != nil {
-		pm.Logger.Error(err.Error())
-		return
-	}
-	watershedDomainBytes, err := getInputBytes("WatershedBoundary", "", payload, pm)
-	if err != nil {
-		pm.Logger.Error(err.Error())
-		return
-	}
-	gridFile, err := hms.ReadGrid(gridFileBytes)
-	metFile, err := hms.ReadMet(metFileBytes)
-	//controlFile, err := hms.ReadControl(controlFileBytes)
-	mcaFile := hms.Mca{}
-	if foundMCA {
-		mcaFile, err = hms.ReadMca(mcaFileBytes)
-	}
-	controlStartTime := time.Now()
+	controlStartTime := time.Now() //introduces a dependency of select random basin for single stochastic transposition. consider consolidating into one action to remove the dependency.
 	for _, a := range payload.Actions {
 		switch a.Type {
 		case "select_random_basin":
+			seedSet, err := getSeeds(payload, pm)
+			if err != nil {
+				pm.Logger.Error(err.Error())
+				return
+			}
 			basinDS, err := pm.GetInputDataSource("Input_Basin_Directory")
 			if err != nil {
 				pm.Logger.Error(err.Error())
@@ -100,13 +54,52 @@ func main() {
 				return
 			}
 			srb := actions.InitSelectBasinAction(a, seedSet, basinDS, outBasinDS)
+
 			controlStartTime, err = srb.Compute()
+
 			if err != nil {
 				return
 			}
 
 		case "single_stochastic_transposition":
-			sst := actions.InitSingleStochasticTransposition(pm, gridFile, metFile, foundMCA, mcaFile, seedSet, transpositionDomainBytes, watershedDomainBytes)
+			seedSet, err := getSeeds(payload, pm)
+			if err != nil {
+				pm.Logger.Error(err.Error())
+				return
+			}
+			gridFileBytes, err := getInputBytes("HMS Model", ".grid", payload, pm)
+			if err != nil {
+				pm.Logger.Error(err.Error())
+				return
+			}
+			metFileBytes, err := getInputBytes("HMS Model", ".met", payload, pm)
+			if err != nil {
+				pm.Logger.Error(err.Error())
+				return
+			}
+
+			transpositionDomainBytes, err := getInputBytes("TranspositionRegion", "", payload, pm)
+			if err != nil {
+				pm.Logger.Error(err.Error())
+				return
+			}
+			watershedDomainBytes, err := getInputBytes("WatershedBoundary", "", payload, pm)
+			if err != nil {
+				pm.Logger.Error(err.Error())
+				return
+			}
+			gridFile, err := hms.ReadGrid(gridFileBytes)
+			if err != nil {
+				pm.Logger.Error(err.Error())
+				return
+			}
+			metFile, err := hms.ReadMet(metFileBytes)
+			if err != nil {
+				pm.Logger.Error(err.Error())
+				return
+			}
+
+			sst := actions.InitSingleStochasticTransposition(pm, gridFile, metFile, seedSet, transpositionDomainBytes, watershedDomainBytes)
 			bootstrapCatalogString := a.Attributes.GetStringOrDefault("bootstrap_catalog", "false")
 			bootstrapCatalog, err := strconv.ParseBool(bootstrapCatalogString)
 			if err != nil {
@@ -163,14 +156,28 @@ func main() {
 				pm.Logger.Error("could not put grid file")
 				return
 			}
-			if foundMCA {
-				err = putOutputBytes(output.McaBytes, "MCA File", payload, pm)
-				if err != nil {
-					pm.Logger.Error("could not put MCA file")
-					return
-				}
-			}
 		case "stratified_locations":
+			gridFileBytes, err := getInputBytes("HMS Model", ".grid", payload, pm)
+			if err != nil {
+				pm.Logger.Error(err.Error())
+				return
+			}
+
+			transpositionDomainBytes, err := getInputBytes("TranspositionRegion", "", payload, pm)
+			if err != nil {
+				pm.Logger.Error(err.Error())
+				return
+			}
+			watershedDomainBytes, err := getInputBytes("WatershedBoundary", "", payload, pm)
+			if err != nil {
+				pm.Logger.Error(err.Error())
+				return
+			}
+			gridFile, err := hms.ReadGrid(gridFileBytes)
+			if err != nil {
+				pm.Logger.Error(err.Error())
+				return
+			}
 			sla, err := actions.InitStratifiedCompute(a, gridFile, transpositionDomainBytes, watershedDomainBytes) //, payload.Outputs[0])
 			if err != nil {
 				pm.Logger.Error("could not initalize stratified locations for this payload")
@@ -199,7 +206,28 @@ func main() {
 				gridFileOutput.Paths["default"] = fmt.Sprintf("%v/%v.grid", root, k)
 				utils.PutFile(v, pm.IOManager, gridFileOutput, "default")
 			}
-		case "valid_stratified_locations":
+		case "valid_stratified_locations": //aka fishnets
+			gridFileBytes, err := getInputBytes("HMS Model", ".grid", payload, pm)
+			if err != nil {
+				pm.Logger.Error(err.Error())
+				return
+			}
+
+			transpositionDomainBytes, err := getInputBytes("TranspositionRegion", "", payload, pm)
+			if err != nil {
+				pm.Logger.Error(err.Error())
+				return
+			}
+			watershedDomainBytes, err := getInputBytes("WatershedBoundary", "", payload, pm)
+			if err != nil {
+				pm.Logger.Error(err.Error())
+				return
+			}
+			gridFile, err := hms.ReadGrid(gridFileBytes)
+			if err != nil {
+				pm.Logger.Error(err.Error())
+				return
+			}
 			sla, err := actions.InitStratifiedCompute(a, gridFile, transpositionDomainBytes, watershedDomainBytes) //, payload.Outputs[0])
 			if err != nil {
 				pm.Logger.Error("could not initalize valid stratified locations for this payload")
@@ -236,7 +264,7 @@ func main() {
 			utils.PutFile(outbytes, pm.IOManager, outputDataSource, "default")
 		case "full_simulation_sst":
 			sst := actions.InitFullRealizationSST(a)
-			err = sst.Compute(int32(pm.EventNumber()), pm)
+			err = sst.Compute(pm)
 			if err != nil {
 				pm.Logger.Error(err.Error())
 				return
@@ -251,18 +279,7 @@ func main() {
 		pm.Logger.Info("complete 100 percent")
 	}
 }
-func validatePayload(payload cc.Payload) error {
-	expectedOutputs := 3
-	expectedInputs := 4 //hms model (grid, met, control), watershed boundary, transposition region, seeds
-	if len(payload.Outputs) < expectedOutputs {
-		return errors.New(fmt.Sprintf("expecting at least %v outputs to be defined, found %v", expectedOutputs, len(payload.Outputs)))
-	}
-	if len(payload.Inputs) < expectedInputs {
-		err := errors.New(fmt.Sprintf("expecting at least %v inputs to be defined, found %v", expectedInputs, len(payload.Inputs)))
-		return err
-	}
-	return nil
-}
+
 func getInputBytes(keyword string, extension string, payload cc.Payload, pm *cc.PluginManager) ([]byte, error) {
 	returnBytes := make([]byte, 0)
 	for _, input := range payload.Inputs {
@@ -317,4 +334,17 @@ func readSeedFile(seedFileBytes []byte) (utils.SeedSet, error) {
 		return seedSet, errors.New("could not find seed set for seedset name")
 	}
 	return seeds, nil
+}
+
+func getSeeds(payload cc.Payload, pm *cc.PluginManager) (utils.SeedSet, error) {
+	var seedSet utils.SeedSet
+	seedFileBytes, err := getInputBytes("seeds", "", payload, pm)
+	if err != nil {
+		return seedSet, err
+	}
+	seedSet, err = readSeedFile(seedFileBytes)
+	if err != nil {
+		return seedSet, err
+	}
+	return seedSet, err
 }

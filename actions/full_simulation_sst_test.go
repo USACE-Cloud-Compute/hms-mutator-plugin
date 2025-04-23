@@ -19,7 +19,7 @@ func Test_RecordSet(t *testing.T) {
 	}
 	datastring := string(data)
 	datalines := strings.Split(datastring, "\n")
-	records := FullRealizationResult{}
+	records := FullSimulationResult{}
 	//skip header
 	for i, r := range datalines {
 		if i != 0 {
