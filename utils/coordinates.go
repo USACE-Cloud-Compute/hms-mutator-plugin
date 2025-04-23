@@ -1,5 +1,13 @@
 package utils // CoordinateList represents a slice of Coordinates, can be used for many purposes, is used to identify transposition locations spaced thorughout the transposition domain.
-import "fmt"
+import (
+	"errors"
+	"fmt"
+	"io"
+	"strconv"
+	"strings"
+
+	"github.com/usace/cc-go-sdk"
+)
 
 type CoordinateList struct {
 	Coordinates []Coordinate
@@ -10,7 +18,7 @@ type Coordinate struct {
 	X float64
 	Y float64
 }
-
+type FishNetMap map[string]CoordinateList //storm type coordinate list.
 func (o Coordinate) DetermineXandYOffset(c Coordinate) Coordinate {
 	xdifference := o.X - c.X
 	ydifference := o.Y - c.Y
@@ -35,4 +43,97 @@ func (cl CoordinateList) ToBytes() []byte {
 		b = append(b, c.ToString()...)
 	}
 	return b
+}
+func BytesToCoordinateList(bytes []byte) (CoordinateList, error) {
+	coords := make([]Coordinate, 0)
+	list := CoordinateList{Coordinates: coords}
+	bytestring := string(bytes)
+	stringlist := strings.Split(bytestring, "\r\n")
+
+	for i, c := range stringlist {
+		if i != 0 { //skip header
+			if len(c) > 0 {
+				points := strings.Split(c, ",")
+				x, err := strconv.ParseFloat(points[0], 64)
+				if err != nil {
+					return list, err
+				}
+				y, err := strconv.ParseFloat(points[1], 64)
+				if err != nil {
+					return list, err
+				}
+				coord := Coordinate{
+					X: x,
+					Y: y,
+				}
+				list.Coordinates = append(list.Coordinates, coord)
+			}
+
+		}
+
+	}
+	return list, nil
+}
+
+var sem = make(chan int, 10)
+
+func ReadFishNets(iomanager cc.IOManager, storeKey string, filePaths []string, fishnetdirectory string) (FishNetMap, error) {
+	//this is a good candidate for paralellization.
+	FishNetMap := make(map[string]CoordinateList)
+	store, err := iomanager.GetStore(storeKey)
+	if err != nil {
+		return FishNetMap, err
+	}
+	session, ok := store.Session.(*cc.S3DataStore)
+	if !ok {
+		return FishNetMap, errors.New(fmt.Sprintf("%v was not an s3datastore type", storeKey))
+	}
+	root := store.Parameters.GetStringOrFail("root")
+
+	names := make([]string, len(filePaths))
+	coordinates := make([]CoordinateList, len(filePaths))
+
+	for i := 0; i < len(filePaths); i++ {
+
+		sem <- 1
+
+		go func(num int) error {
+			path := filePaths[num]
+			path = fmt.Sprintf("%v%v", fishnetdirectory, path)
+			pathpart := strings.Replace(path, fmt.Sprintf("%v/", root), "", -1)
+			reader, err := session.Get(pathpart, "")
+			if err != nil {
+				<-sem
+				return err
+			}
+			bytes, err := io.ReadAll(reader)
+			if err != nil {
+				<-sem
+				return err
+			}
+			coordlist, err := BytesToCoordinateList(bytes)
+			if err != nil {
+				<-sem
+				return err
+			}
+			parts := strings.Split(path, "/")
+			lastpart := parts[len(parts)-1]
+			name := strings.Split(lastpart, ".")[0]
+			names[num] = name
+			coordinates[num] = coordlist
+			//FishNetMap[name] = coordlist
+			<-sem
+			return nil
+
+		}(i)
+
+	}
+	//wg.Wait()
+	for i := 0; i < cap(sem); i++ {
+		sem <- i
+	}
+	for i, n := range names {
+		FishNetMap[n] = coordinates[i]
+	}
+	return FishNetMap, nil
 }
