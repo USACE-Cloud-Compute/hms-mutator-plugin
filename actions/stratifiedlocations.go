@@ -198,7 +198,7 @@ func (sc StratifiedCompute) DetermineValidLocationsQuickly(iomanager cc.IOManage
 	ref := gdal.CreateSpatialReference("")
 	ref.FromEPSG(5070)
 
-	//could be a go routine at this level
+	//could be a go routine at this level @TODO: parallelize this code
 	//loop through the storms in the grid file(in order for simplicity)
 	stormcenterbytes := make([]byte, 0)
 	for _, storm := range sc.GridFile.Events {

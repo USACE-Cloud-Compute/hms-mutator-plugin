@@ -1,6 +1,7 @@
 package actions
 
 import (
+	"bytes"
 	"fmt"
 	"math/rand"
 	"strings"
@@ -31,7 +32,7 @@ type FullRealizationResult []EventResult
 
 type EventResult struct {
 	EventNumber int64   `eventstore:"event_number"`
-	StormPath   string  `eventstore:"event_number"`
+	StormPath   string  `eventstore:"storm_path"`
 	X           float64 `eventstore:"x"`
 	Y           float64 `eventstore:"y"`
 	StormType   string  `eventstore:"storm_type"`
@@ -45,6 +46,12 @@ func InitFullRealizationSST(a cc.Action) *FullRealizationSST {
 func (frsst *FullRealizationSST) Compute(realizationNumber int32, pm *cc.PluginManager) error {
 	a := frsst.action
 	//get parameters
+	//get output datasource
+	outputDataSourceKey := a.Attributes.GetStringOrFail("output_data_source")
+	outputDataSource, err := a.GetOutputDataSource(outputDataSourceKey)
+	if err != nil {
+		return err
+	}
 	///get storms
 	stormDirectory := a.Attributes.GetStringOrFail("storms_directory")
 	stormsStoreKey := a.Attributes.GetStringOrFail("storms_store") //expecting this to be an s3 bucket?
@@ -100,7 +107,7 @@ func (frsst *FullRealizationSST) Compute(realizationNumber int32, pm *cc.PluginM
 	if err != nil {
 		return err
 	}
-	seeds, err := utils.ReadSeedsFromTiledb(a.IOManager, seedInput.StoreName, seedsKey, "hms-mutator") //hms-mutator is a const in main, but i dont want to create cycles.
+	seeds, err := utils.ReadSeedsFromTiledb(a.IOManager, seedInput.StoreName, "seeds", "hms-mutator") //hms-mutator is a const in main, but i dont want to create cycles.
 	if err != nil {
 		return err
 	}
@@ -119,7 +126,12 @@ func (frsst *FullRealizationSST) Compute(realizationNumber int32, pm *cc.PluginM
 		return err
 	}
 	//write results to data stores
-	return writeResultsToTileDB(pm, blocksInput.StoreName, results, "storms") //update this to not referenceblock store, and also not hardcode the name to "storms"
+	if outputDataSource.StoreName == "store" {
+		return writeResultsToTileDB(pm, outputDataSourceKey, results, outputDataSource.Name) //update this to not referenceblock store, and also not hardcode the name to "storms"
+	} else {
+		return writeResultsToCSV(a.IOManager, outputDataSource, results)
+	}
+
 }
 func compute(realizationNumber int32, stormNames []string, calibrationEventNames []string, basinRootDir string, fishnets utils.FishNetMap, seasonalDistributions utils.StormTypeSeasonalityDistributionMap, porStart time.Time, porEnd time.Time, seeds []utils.SeedSet, blocks []utils.Block) (FullRealizationResult, error) {
 	results := make(FullRealizationResult, 0)
@@ -136,9 +148,12 @@ func compute(realizationNumber int32, stormNames []string, calibrationEventNames
 					//sample calibration event
 					calibrationEvent := calibrationEventNames[enRng.Intn(len(calibrationEventNames))]
 					//fetch fishnet based on storm name
-					fishnet, ok := fishnets[stormName] //storm name is full path not just file name.
+					sname := strings.Split(stormName, ".")[0]
+					sname = strings.Replace(sname, "st", "ST", -1) //how did this happen?
+					fishnet, ok := fishnets[sname]                 //storm name just file name no extension.
 					if !ok {
-						return results, fmt.Errorf("could not find storm name %v in fishnet map", stormName)
+
+						return results, fmt.Errorf("could not find storm name %v in fishnet map", sname)
 					}
 					//sample location
 					coordinate := fishnet.Coordinates[enRng.Intn(len(fishnet.Coordinates))]
@@ -165,6 +180,9 @@ func compute(realizationNumber int32, stormNames []string, calibrationEventNames
 								dayofyearInrange = true
 								year = initalYearGuess
 							}
+						} else if porStart.Year() < initalYearGuess && initalYearGuess < porEnd.Year() {
+							dayofyearInrange = true
+							year = initalYearGuess
 						}
 					}
 					//create start date from day of year and year
@@ -182,6 +200,7 @@ func compute(realizationNumber int32, stormNames []string, calibrationEventNames
 						StormType:   stormType,
 						X:           coordinate.X,
 						Y:           coordinate.Y,
+						StormDate:   startDate.Format("20060102"),
 						BasinPath:   fmt.Sprintf("%v/%v_%v", basinRootDir, startDate.Format("2006-01-02"), calibrationEvent),
 					}
 					results = append(results, event)
@@ -203,4 +222,18 @@ func writeResultsToTileDB(pm *cc.PluginManager, storeKey string, results FullRea
 		return err
 	}
 	return recordset.Write(&results)
+}
+func writeResultsToCSV(iomanager cc.IOManager, ds cc.DataSource, results FullRealizationResult) error {
+	//create a header
+	data := "event_number,storm_path,x,y,storm_type,storm_date,basin_path"
+	for _, r := range results {
+		data = fmt.Sprintf("%v\n%v,%v,%v,%v,%v,%v,%v", data, r.EventNumber, r.StormPath, r.X, r.Y, r.StormType, r.StormDate, r.BasinPath)
+	}
+	bytedata := []byte(data)
+	writer := bytes.NewReader(bytedata)
+	_, err := iomanager.Put(cc.PutOpInput{
+		SrcReader:         writer,
+		DataSourceOpInput: cc.DataSourceOpInput{DataSourceName: ds.Name, PathKey: "default"},
+	})
+	return err
 }

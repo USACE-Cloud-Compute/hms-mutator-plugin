@@ -75,6 +75,7 @@ func BytesToCoordinateList(bytes []byte) (CoordinateList, error) {
 	return list, nil
 }
 func ReadFishNets(iomanager cc.IOManager, storeKey string, filePaths []string, fishnetdirectory string) (FishNetMap, error) {
+	//this is a good candidate for paralellization.
 	FishNetMap := make(map[string]CoordinateList)
 	store, err := iomanager.GetStore(storeKey)
 	if err != nil {
@@ -100,7 +101,10 @@ func ReadFishNets(iomanager cc.IOManager, storeKey string, filePaths []string, f
 		if err != nil {
 			return FishNetMap, err
 		}
-		FishNetMap[path] = coordlist
+		parts := strings.Split(path, "/")
+		lastpart := parts[len(parts)-1]
+		name := strings.Split(lastpart, ".")[0]
+		FishNetMap[name] = coordlist
 	}
 	return FishNetMap, nil
 }

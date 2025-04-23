@@ -80,7 +80,10 @@ func ReadStormDistributions(iomanager cc.IOManager, storeKey string, filePaths [
 		if err != nil {
 			return StormTypeSeasonalityDistributionMap, err
 		}
-		StormTypeSeasonalityDistributionMap[path] = dist
+		parts := strings.Split(path, "/")
+		lastpart := parts[len(parts)-1]
+		name := strings.Split(lastpart, ".")[0]
+		StormTypeSeasonalityDistributionMap[name] = dist
 	}
 	return StormTypeSeasonalityDistributionMap, nil
 }
