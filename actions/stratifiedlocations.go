@@ -6,6 +6,7 @@ import (
 	"math"
 	"path"
 	"strings"
+	"time"
 
 	"github.com/dewberry/gdal"
 	"github.com/usace/cc-go-sdk"
@@ -168,6 +169,9 @@ func (sc StratifiedCompute) DetermineValidLocations(inputRoot cc.DataSource) (Va
 	fmt.Println(string(stormcenterbytes))
 	return computeResult, nil
 }
+
+var sem = make(chan int, 7)
+
 func (sc StratifiedCompute) DetermineValidLocationsQuickly(iomanager cc.IOManager) (ValidLocationsComputeResult, error) {
 	var computeResult ValidLocationsComputeResult
 	outputDataSource, err := iomanager.GetOutputDataSource("ValidLocations")
@@ -175,7 +179,7 @@ func (sc StratifiedCompute) DetermineValidLocationsQuickly(iomanager cc.IOManage
 		return computeResult, errors.New("could not put valid stratified locations for this payload")
 	}
 	validlocationsroot := outputDataSource.Paths["default"]
-	allStormsAllLocations := make([]LocationInfo, 0)
+	allStormsAllLocations := make([]LocationInfo, len(sc.GridFile.Events))
 	validLocationMap := make(map[string]utils.CoordinateList, 0)
 	//generate of candidate storm centers.
 	candidateStormCenters, err := sc.generateStormCenters()
@@ -200,73 +204,96 @@ func (sc StratifiedCompute) DetermineValidLocationsQuickly(iomanager cc.IOManage
 
 	//could be a go routine at this level @TODO: parallelize this code
 	//loop through the storms in the grid file(in order for simplicity)
+
 	stormcenterbytes := make([]byte, 0)
-	for _, storm := range sc.GridFile.Events {
-		fmt.Printf("working on storm %v\n", storm.Name)
-		//create a validlocation coordinate list.
-		validLocations := utils.CoordinateList{Coordinates: make([]utils.Coordinate, 0)}
-		//determine the center of the storm.
+	names := make([]string, len(sc.GridFile.Events))
+	locationsslice := make([]utils.CoordinateList, len(sc.GridFile.Events))
+	for i := 0; i < len(sc.GridFile.Events); i++ { //num, storm := range sc.GridFile.Events {
+		sem <- 1
+		go func(num int) error {
+			start := time.Now()
+			storm := sc.GridFile.Events[num]
+			fmt.Printf("working on storm %v\n", storm.Name)
+			//create a validlocation coordinate list.
+			validLocations := utils.CoordinateList{Coordinates: make([]utils.Coordinate, 0)}
+			//determine the center of the storm.
 
-		stormCenter, err := gdal.CreateFromWKT(fmt.Sprintf("Point (%v %v)\n", storm.CenterX, storm.CenterY), ref)
-		if err != nil {
-			return computeResult, err
-		}
-
-		stormCoord := utils.Coordinate{X: stormCenter.X(0), Y: stormCenter.Y(0)}
-		stormcenterbytes = append(stormcenterbytes, fmt.Sprintf("%v,%v,%v\n", storm.Name, stormCoord.X, stormCoord.Y)...)
-		//fmt.Print(string(stormcenterbytes))
-		//fmt.Println(time.Now())
-		//loop through each point in the candidate storm centers
-		for _, candidate := range candidateStormCenters.Coordinates {
-			//fmt.Println(i)
-			locationInfo := LocationInfo{
-				StormName:  storm.Name,
-				Coordinate: candidate,
-				IsValid:    false,
+			stormCenter, err := gdal.CreateFromWKT(fmt.Sprintf("Point (%v %v)\n", storm.CenterX, storm.CenterY), ref)
+			if err != nil {
+				<-sem
+				return err
 			}
-			//calculate an offset from the center to the new destination location
-			offset := candidate.DetermineXandYOffset(stormCoord)
-			//invert that offset
-			//offset.X = -offset.X
-			//offset.Y = -offset.Y
-			func(shift utils.Coordinate) {
-				shiftableWatershedBoundary := sap.Geometry().Clone() //shift watershed boundary
-				defer shiftableWatershedBoundary.Destroy()
-				geometrycount := shiftableWatershedBoundary.GeometryCount()
-				for g := 0; g < geometrycount; g++ {
-					geometry := shiftableWatershedBoundary.Geometry(g)
-					//defer geometry.Destroy()
-					geometryPointCount := geometry.PointCount()
-					//fmt.Printf("x,y\n")
-					for i := 0; i < geometryPointCount; i++ {
-						px, py, pz := geometry.Point(i)
-						shiftedx := px - shift.X
-						shiftedy := py - shift.Y
-						//fmt.Printf("%v,%v\n", shiftedx, shiftedy)
-						shiftableWatershedBoundary.Geometry(g).SetPoint(i, shiftedx, shiftedy, pz) //does this work or does it insert?
+
+			stormCoord := utils.Coordinate{X: stormCenter.X(0), Y: stormCenter.Y(0)}
+			stormcenterbytes = append(stormcenterbytes, fmt.Sprintf("%v,%v,%v\n", storm.Name, stormCoord.X, stormCoord.Y)...)
+			//fmt.Print(string(stormcenterbytes))
+			//fmt.Println(time.Now())
+			//loop through each point in the candidate storm centers
+			for _, candidate := range candidateStormCenters.Coordinates {
+				//fmt.Println(i)
+				locationInfo := LocationInfo{
+					StormName:  storm.Name,
+					Coordinate: candidate,
+					IsValid:    false,
+				}
+				//calculate an offset from the center to the new destination location
+				offset := candidate.DetermineXandYOffset(stormCoord)
+				//invert that offset
+				//offset.X = -offset.X
+				//offset.Y = -offset.Y
+				func(shift utils.Coordinate) {
+					shiftableWatershedBoundary := sap.Geometry().Clone() //shift watershed boundary
+					defer shiftableWatershedBoundary.Destroy()
+					geometrycount := shiftableWatershedBoundary.GeometryCount()
+					for g := 0; g < geometrycount; g++ {
+						geometry := shiftableWatershedBoundary.Geometry(g)
+						//defer geometry.Destroy()
+						geometryPointCount := geometry.PointCount()
+						//fmt.Printf("x,y\n")
+						for i := 0; i < geometryPointCount; i++ {
+							px, py, pz := geometry.Point(i)
+							shiftedx := px - shift.X
+							shiftedy := py - shift.Y
+							//fmt.Printf("%v,%v\n", shiftedx, shiftedy)
+							shiftableWatershedBoundary.Geometry(g).SetPoint(i, shiftedx, shiftedy, pz) //does this work or does it insert?
+						}
 					}
-				}
 
-				shiftContained := trp.Geometry().Contains(shiftableWatershedBoundary)
-				if shiftContained {
-					locationInfo.IsValid = true
-					validLocations.Coordinates = append(validLocations.Coordinates, candidate)
-				}
-			}(offset)
+					shiftContained := trp.Geometry().Contains(shiftableWatershedBoundary)
+					if shiftContained {
+						locationInfo.IsValid = true
+						validLocations.Coordinates = append(validLocations.Coordinates, candidate)
+					}
 
-			allStormsAllLocations = append(allStormsAllLocations, locationInfo)
-			//next cell center
-		} //next transposition location
-		fmt.Printf("found %v valid placements for storm %v\n", len(validLocations.Coordinates), storm.Name)
-		name := fmt.Sprintf("%v.csv", storm.Name)
-		validLocationMap[name] = validLocations
-		outputDataSource.Paths["default"] = fmt.Sprintf("%v/%v", validlocationsroot, name)
-		err = utils.PutFile(validLocations.ToBytes(), iomanager, outputDataSource, "default")
-		if err != nil {
-			return computeResult, err
-		}
+				}(offset)
 
+				allStormsAllLocations[num] = locationInfo
+				//next cell center
+			} //next transposition location
+			fmt.Printf("found %v valid placements for storm %v\n", len(validLocations.Coordinates), storm.Name)
+			name := fmt.Sprintf("%v.csv", storm.Name)
+			//validLocationMap[name] = validLocations
+			names[num] = name
+			locationsslice[num] = validLocations
+			outputDataSource.Paths["default"] = fmt.Sprintf("%v/%v", validlocationsroot, name)
+			err = utils.PutFile(validLocations.ToBytes(), iomanager, outputDataSource, "default")
+			if err != nil {
+				<-sem
+				return err
+			}
+			//end := time.Now()
+			dur := time.Since(start)
+			fmt.Printf("%v took %v seconds\n", name, dur.Seconds())
+			<-sem
+			return nil
+		}(i)
 	} //next storm
+	for i := 0; i < cap(sem); i++ {
+		sem <- i
+	}
+	for i, n := range names {
+		validLocationMap[n] = locationsslice[i]
+	}
 	computeResult.StormMap = validLocationMap
 	computeResult.AllStormsAllLocations = allStormsAllLocations
 	fmt.Println(string(stormcenterbytes))
