@@ -13,6 +13,7 @@ type EventConfiguration struct {
 }
 type SeedSet struct {
 	EventSeed       int64 `json:"event_seed" eventstore:"event_seed"`
+	BlockSeed       int64 `json:"block_seed" eventstore:"block_seed"`
 	RealizationSeed int64 `json:"realization_seed" eventstore:"realization_seed"`
 }
 
@@ -45,7 +46,7 @@ func ReadSeedsFromTiledb(ioManager cc.IOManager, tileDbStoreName string, dataset
 		return seeds, fmt.Errorf("the store named %v does not implement multidimensional array store", tileDbStoreName)
 	}
 	getArrayInput := cc.GetArrayInput{
-		Attrs:    []string{"realization_seed", "event_seed"}, //does this have to be in the same order as it was written?
+		Attrs:    []string{"realization_seed", "block_seed", "event_seed"}, //does this have to be in the same order as it was written?
 		DataPath: datasetName,
 		//BufferRange: []int64{0}, //how do i know how big of a buffer to input?
 		//SearchOrder: cc.ROWMAJOR,
@@ -55,11 +56,13 @@ func ReadSeedsFromTiledb(ioManager cc.IOManager, tileDbStoreName string, dataset
 		return seeds, err
 	}
 	eventSeeds := make([]int64, 0)
-	result.GetColumn(columnIndex, 1, &eventSeeds) //how do i know for certain attribute order?
+	result.GetColumn(columnIndex, 2, &eventSeeds) //how do i know for certain attribute order?
+	blockSeeds := make([]int64, 0)
+	result.GetColumn(columnIndex, 1, &blockSeeds) //how do i know for certain attribute order?
 	realizationSeeds := make([]int64, 0)
 	result.GetColumn(columnIndex, 0, &realizationSeeds) //how do i know for certain attribute order?
 	for i, es := range eventSeeds {
-		seeds = append(seeds, SeedSet{EventSeed: es, RealizationSeed: realizationSeeds[i]})
+		seeds = append(seeds, SeedSet{EventSeed: es, BlockSeed: blockSeeds[i], RealizationSeed: realizationSeeds[i]})
 	}
 	return seeds, nil
 }
