@@ -139,8 +139,8 @@ func compute(stormNames []string, calibrationEventNames []string, basinRootDir s
 		if b.BlockEventCount > 0 {
 			for en := b.BlockEventStart; en <= b.BlockEventEnd; en++ {
 				//create random number generator for event
-				if int(en) < len(seeds) {
-					enRng := rand.New(rand.NewSource(seeds[en].EventSeed))
+				if int(en) <= len(seeds) {
+					enRng := rand.New(rand.NewSource(seeds[en-1].EventSeed))
 					//sample storm name
 					stormName := stormNames[enRng.Intn(len(stormNames))]
 					//calculate storm type from storm name
