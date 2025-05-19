@@ -169,7 +169,7 @@ func compute(stormNames []string, calibrationEventNames []string, basinRootDir s
 					dayofyearInrange := false
 					year := 0
 					for !dayofyearInrange {
-						initalYearGuess := enRng.Intn(yearCount) + porStart.Year()
+						initalYearGuess := enRng.Intn(yearCount+1) + porStart.Year() //+1 is due to [0,n)
 						if initalYearGuess == porStart.Year() {
 							if dayOfYear >= porStart.YearDay() {
 								dayofyearInrange = true
