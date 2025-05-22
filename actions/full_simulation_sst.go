@@ -61,7 +61,7 @@ func (frsst *FullSimulationSST) Compute(pm *cc.PluginManager) error {
 	}
 	//if i wanted to bootstrap, i could bootstrap the storm list now...
 
-	///use fishnets to figure out placements - select from list of valid placements.
+	///use fishnets to figure out placements - select from list of valid placements. fishnets are currently expected to be unique to each storm... could be converted to be unique to each storm type.
 	fishnetDirectory := a.Attributes.GetStringOrFail("fishnet_directory")
 	fishnetStoreKey := a.Attributes.GetStringOrFail("fishnet_store")
 	fishnetList, err := utils.ListAllPaths(a.IOManager, fishnetStoreKey, fishnetDirectory, "*.csv")
@@ -148,13 +148,13 @@ func compute(stormNames []string, calibrationEventNames []string, basinRootDir s
 					stormType := strings.Split(stormName, "_")[2] //assuming yyyymmdd_xxhr_data-type_storm-type_storm-rank - if data-type is dropped as i hope this needs to be updated to 2
 					//sample calibration event
 					calibrationEvent := calibrationEventNames[enRng.Intn(len(calibrationEventNames))]
-					//fetch fishnet based on storm name
+					//fetch fishnet based on storm name - @ TODO modify this code to select based on storm name or storm type
 					sname := strings.Split(stormName, ".")[0]
 					sname = strings.Replace(sname, "st", "ST", -1) //how did this happen?
 					fishnet, ok := fishnets[sname]                 //storm name just file name no extension.
 					if !ok {
 
-						return results, fmt.Errorf("could not find storm name %v in fishnet map", sname)
+						return results, fmt.Errorf("could not find fishnet %v in fishnet map", sname)
 					}
 					//sample location
 					coordinate := fishnet.Coordinates[enRng.Intn(len(fishnet.Coordinates))]
