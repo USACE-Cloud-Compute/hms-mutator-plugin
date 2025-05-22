@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"math/rand"
 	"path"
 	"strings"
 	"time"
@@ -298,6 +299,48 @@ func (sc StratifiedCompute) DetermineValidLocationsQuickly(iomanager cc.IOManage
 	computeResult.AllStormsAllLocations = allStormsAllLocations
 	fmt.Println(string(stormcenterbytes))
 	return computeResult, nil
+}
+func (sc StratifiedCompute) DetermineStormTypeNormalDensityKernelLocations(iomanager cc.IOManager) error {
+	result := utils.FishNetMap{}
+	outputDataSource, err := iomanager.GetOutputDataSource("ValidLocations")
+	if err != nil {
+		return errors.New("could not put valid stratified locations for this payload")
+	}
+	validlocationsroot := outputDataSource.Paths["default"]
+	layer := sc.TranspositionPolygon.LayerByIndex(0)
+	polygon := layer.Feature(1)
+
+	radius := iomanager.Attributes.GetFloatOrFail("radius")              //50000 //50km
+	alpha := iomanager.Attributes.GetFloatOrFail("alpha")                //.05    //.05,.95 ci
+	count := iomanager.Attributes.GetIntOrFail("count")                  //50
+	seed := iomanager.Attributes.GetIntOrFail("seed")                    //1234
+	stormTypes, err := iomanager.Attributes.GetStringSlice("stormTypes") //[]string{"ST1", "ST2", "ST3", "ST4", "ST5"}
+	if err != nil {
+		return err
+	}
+	rng := rand.New(rand.NewSource(int64(seed)))
+
+	for _, st := range stormTypes {
+		originalCoordinates := make([]utils.Coordinate, len(sc.GridFile.Events))
+		for i, e := range sc.GridFile.Events {
+			if strings.Contains(e.Name, st) {
+				originalCoordinates[i] = utils.Coordinate{X: e.CenterX, Y: e.CenterY}
+			}
+		}
+		masterList := make([]utils.Coordinate, 0)
+		for _, input := range originalCoordinates {
+			output := utils.CreateDensityList(input, alpha, float64(radius), count, rng.Int63())
+			//clip?
+			masterList = append(masterList, output.Coordinates...)
+		}
+
+		fishnet := utils.ClipDensityList(utils.CoordinateList{Coordinates: masterList}, polygon)
+		result[st] = fishnet
+
+		outputDataSource.Paths["default"] = fmt.Sprintf("%v/%v.csv", validlocationsroot, st)
+		err = utils.PutFile(fishnet.ToBytes(), iomanager, outputDataSource, "default")
+	}
+	return nil
 }
 func (sc StratifiedCompute) generateStormCenters() (utils.CoordinateList, error) {
 	return generateUniformPointList(sc.TranspositionPolygon, sc.Spacing)
