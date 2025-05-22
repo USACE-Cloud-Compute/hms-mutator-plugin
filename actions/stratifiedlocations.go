@@ -302,9 +302,9 @@ func (sc StratifiedCompute) DetermineValidLocationsQuickly(iomanager cc.IOManage
 }
 func (sc StratifiedCompute) DetermineStormTypeNormalDensityKernelLocations(iomanager cc.IOManager) error {
 	result := utils.FishNetMap{}
-	outputDataSource, err := iomanager.GetOutputDataSource("ValidLocations")
+	outputDataSource, err := iomanager.GetOutputDataSource("Locations")
 	if err != nil {
-		return errors.New("could not put valid stratified locations for this payload")
+		return errors.New("could not put locations for this payload")
 	}
 	validlocationsroot := outputDataSource.Paths["default"]
 	layer := sc.TranspositionPolygon.LayerByIndex(0)
@@ -339,8 +339,12 @@ func (sc StratifiedCompute) DetermineStormTypeNormalDensityKernelLocations(ioman
 
 		outputDataSource.Paths["default"] = fmt.Sprintf("%v/%v.csv", validlocationsroot, st)
 		err = utils.PutFile(fishnet.ToBytes(), iomanager, outputDataSource, "default")
+		if err != nil {
+			return err
+		}
+		//return err
 	}
-	return nil
+	return err
 }
 func (sc StratifiedCompute) generateStormCenters() (utils.CoordinateList, error) {
 	return generateUniformPointList(sc.TranspositionPolygon, sc.Spacing)
