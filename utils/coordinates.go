@@ -3,9 +3,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math/rand"
 	"strconv"
 	"strings"
 
+	"github.com/HydrologicEngineeringCenter/go-statistics/statistics"
+	"github.com/dewberry/gdal"
 	"github.com/usace/cc-go-sdk"
 )
 
@@ -136,4 +139,44 @@ func ReadFishNets(iomanager cc.IOManager, storeKey string, filePaths []string, f
 		FishNetMap[n] = coordinates[i]
 	}
 	return FishNetMap, nil
+}
+func CreateDensityList(coordinate Coordinate, alpha float64, radius float64, count int, seed int64) CoordinateList {
+	sn := statistics.NormalDistribution{
+		Mean:              0,
+		StandardDeviation: 1,
+	}
+	divisor := sn.InvCDF(1 - alpha)
+	stdev := radius / divisor
+	xdist := statistics.NormalDistribution{
+		Mean:              coordinate.X,
+		StandardDeviation: stdev,
+	}
+	ydist := statistics.NormalDistribution{
+		Mean:              coordinate.Y,
+		StandardDeviation: stdev,
+	}
+	rng := rand.New(rand.NewSource(seed))
+	clist := make([]Coordinate, count)
+	for i := 0; i < count; i++ {
+
+		x := xdist.InvCDF(.05 + .9*rng.Float64())
+		y := ydist.InvCDF(.05 + .9*rng.Float64())
+		clist[i] = Coordinate{X: x, Y: y}
+	}
+	return CoordinateList{Coordinates: clist}
+}
+func ClipDensityList(list CoordinateList, transpositionDomain gdal.Feature) CoordinateList {
+	output := make([]Coordinate, 0)
+	ref := transpositionDomain.Geometry().SpatialReference()
+	for _, c := range list.Coordinates {
+		//determine if polygon contains the point.
+		location, err := gdal.CreateFromWKT(fmt.Sprintf("Point (%v %v)\n", c.X, c.Y), ref)
+		if err != nil {
+			return CoordinateList{Coordinates: output}
+		}
+		if transpositionDomain.Geometry().Contains(location) {
+			output = append(output, c)
+		}
+	}
+	return CoordinateList{Coordinates: output}
 }
