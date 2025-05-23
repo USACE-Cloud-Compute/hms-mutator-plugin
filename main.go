@@ -289,11 +289,44 @@ func main() {
 				pm.Logger.Error("could not initalize locations for this payload")
 				return
 			}
-			err = sla.DetermineStormTypeNormalDensityKernelLocations(pm.IOManager) //sla.DetermineValidLocations(inputSource) //update to be based on output location?
+			err = sla.DetermineStormTypeNormalDensityKernelLocations(a.IOManager) //sla.DetermineValidLocations(inputSource) //update to be based on output location?
 			if err != nil {
 				pm.Logger.Error("could not compute locations for this payload")
 				return
 			}
+		case "normal_density_locations": //aka fishnets
+			gridFileBytes, err := getInputBytes("HMS Model", ".grid", payload, pm)
+			if err != nil {
+				pm.Logger.Error(err.Error())
+				return
+			}
+
+			transpositionDomainBytes, err := getInputBytes("TranspositionRegion", "", payload, pm)
+			if err != nil {
+				pm.Logger.Error(err.Error())
+				return
+			}
+			watershedDomainBytes, err := getInputBytes("WatershedBoundary", "", payload, pm)
+			if err != nil {
+				pm.Logger.Error(err.Error())
+				return
+			}
+			gridFile, err := hms.ReadGrid(gridFileBytes)
+			if err != nil {
+				pm.Logger.Error(err.Error())
+				return
+			}
+			sla, err := actions.InitStratifiedCompute(a, gridFile, transpositionDomainBytes, watershedDomainBytes) //, payload.Outputs[0])
+			if err != nil {
+				pm.Logger.Error("could not initalize locations for this payload")
+				return
+			}
+			err = sla.DetermineNormalDensityKernelLocations(a.IOManager) //sla.DetermineValidLocations(inputSource) //update to be based on output location?
+			if err != nil {
+				pm.Logger.Error("could not compute locations for this payload")
+				return
+			}
+
 		case "full_simulation_sst":
 			sst := actions.InitFullRealizationSST(a)
 			err = sst.Compute(pm)

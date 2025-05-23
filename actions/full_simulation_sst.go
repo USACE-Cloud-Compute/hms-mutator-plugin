@@ -151,11 +151,13 @@ func compute(stormNames []string, calibrationEventNames []string, basinRootDir s
 					calibrationEvent := calibrationEventNames[enRng.Intn(len(calibrationEventNames))]
 					//fetch fishnet based on storm name -
 					sname := strings.Split(stormName, ".")[0]
-					sname = strings.Replace(sname, "st", "ST", -1) //how did this happen?
+					sname = strings.Replace(sname, "st", "ST", -1) //how did this happen?//storm name just file name no extension.
 					if fishnettypeorname == "type" {
 						sname = stormType
+					} else if fishnettypeorname != "name" {
+						sname = fishnettypeorname //if not type or name, just use whatever they give directly.
 					}
-					fishnet, ok := fishnets[sname] //storm name just file name no extension.
+					fishnet, ok := fishnets[sname]
 					if !ok {
 
 						return results, fmt.Errorf("could not find fishnet %v in fishnet map", sname)
