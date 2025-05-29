@@ -386,14 +386,14 @@ func putOutputBytes(data []byte, keyword string, payload cc.Payload, pm *cc.Plug
 
 func readSeedFile(seedFileBytes []byte) (utils.SeedSet, error) {
 	//read event configuration
-	var ec []utils.EventConfiguration
+	var ec utils.EventConfiguration
 	var seedSet utils.SeedSet
 	err := json.Unmarshal(seedFileBytes, &ec)
 	if err != nil {
 		return seedSet, err
 	}
 	seedSetName := pluginName
-	seedinstance := ec[0] //[seedSetName]
+	seedinstance := ec
 	seeds, ssok := seedinstance.Seeds[seedSetName]
 	if !ssok {
 		return seedSet, errors.New("could not find seed set for seedset name")

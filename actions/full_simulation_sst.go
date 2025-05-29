@@ -153,7 +153,7 @@ func compute(stormNames []string, calibrationEventNames []string, basinRootDir s
 					sname := strings.Split(stormName, ".")[0]
 					sname = strings.Replace(sname, "st", "ST", -1) //how did this happen?//storm name just file name no extension.
 					if fishnettypeorname == "type" {
-						sname = stormType
+						sname = strings.Replace(stormType, "st", "ST", -1)
 					} else if fishnettypeorname != "name" {
 						sname = fishnettypeorname //if not type or name, just use whatever they give directly.
 					}
