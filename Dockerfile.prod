@@ -1,13 +1,7 @@
-FROM osgeo/gdal:alpine-normal-3.5.2 as builder
-COPY --from=golang:1.19-alpine /usr/local/go/ /usr/local/go/
-RUN apk add --no-cache \
-    pkgconfig \
-    gcc \
-    libc-dev \
-    git
-ENV GOROOT=/usr/local/go
-ENV GOPATH=/go
-ENV PATH=$PATH:$GOROOT/bin:$GOPATH/bin
+FROM cc-tiledb AS builder
+
+RUN apt update &&\
+	apt -y install gdal-bin gdal-data libgdal-dev
 
 WORKDIR /app
 RUN git clone https://github.com/USACE/hms-mutator.git
@@ -16,7 +10,33 @@ RUN go mod download
 RUN go mod tidy
 RUN go build main.go
 
+FROM ubuntu:24.04 AS prod
 
-FROM osgeo/gdal:alpine-normal-3.5.2 as prod
+ARG TILEDB_VERSION=2.26.2
+ARG TILEDB_LIB=/usr/local/lib/tiledb
+ARG TILEDB_SRC=/opt/tiledb
+
+ENV PATH=/root/.local/bin:$PATH
+ENV LD_LIBRARY_PATH="${TILEDB_LIB}/lib"
+ENV C_INCLUDE_PATH="${TILEDB_SRC}/include:${TILEDB_SRC}/include/tiledb"
+ENV VCPKG_FORCE_SYSTEM_BINARIES=1
+ENV LIBRARY_PATH="${TILEDB_LIB}/lib"
+
+RUN apt update &&\
+    apt -y install libssl-dev libbz2-dev libgdbm-dev uuid-dev libncurses-dev libffi-dev libgdbm-compat-dev sqlite3 lzma lzma-dev &&\
+    apt -y install wget build-essential cmake ninja-build doxygen curl zip unzip tar &&\
+    apt -y install locales locales-all pkg-config git gdal-bin gdal-data libgdal-dev
+
+RUN wget https://github.com/TileDB-Inc/TileDB/archive/refs/tags/${TILEDB_VERSION}.tar.gz &&\
+    tar -xvzf ./${TILEDB_VERSION}.tar.gz  &&\
+    mv /TileDB-${TILEDB_VERSION} /opt/tiledb &&\
+    cd /opt/tiledb &&\
+    mkdir build &&\
+    cd build &&\
+    ../bootstrap --prefix=${TILEDB_LIB} --enable-s3 --enable-serialization &&\
+    make &&\
+    make install-tiledb &&\
+    rm /${TILEDB_VERSION}.tar.gz
+
 WORKDIR /app
 COPY --from=builder /app/hms-mutator/main .
