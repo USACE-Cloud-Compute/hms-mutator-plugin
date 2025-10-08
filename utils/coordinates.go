@@ -3,6 +3,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"math/rand"
 	"strconv"
 	"strings"
@@ -140,6 +141,34 @@ func ReadFishNets(iomanager cc.IOManager, storeKey string, filePaths []string, f
 	}
 	return FishNetMap, nil
 }
+
+/*
+	func CreateDensityList(coordinate Coordinate, alpha float64, radius float64, count int, seed int64) CoordinateList {
+		sn := statistics.NormalDistribution{
+			Mean:              0,
+			StandardDeviation: 1,
+		}
+		divisor := sn.InvCDF(1 - alpha)
+		stdev := radius / divisor
+		xdist := statistics.NormalDistribution{
+			Mean:              coordinate.X,
+			StandardDeviation: stdev,
+		}
+		ydist := statistics.NormalDistribution{
+			Mean:              coordinate.Y,
+			StandardDeviation: stdev,
+		}
+		rng := rand.New(rand.NewSource(seed))
+		clist := make([]Coordinate, count)
+		for i := 0; i < count; i++ {
+
+			x := xdist.InvCDF(.05 + .9*rng.Float64())
+			y := ydist.InvCDF(.05 + .9*rng.Float64())
+			clist[i] = Coordinate{X: x, Y: y}
+		}
+		return CoordinateList{Coordinates: clist}
+	}
+*/
 func CreateDensityList(coordinate Coordinate, alpha float64, radius float64, count int, seed int64) CoordinateList {
 	sn := statistics.NormalDistribution{
 		Mean:              0,
@@ -147,20 +176,24 @@ func CreateDensityList(coordinate Coordinate, alpha float64, radius float64, cou
 	}
 	divisor := sn.InvCDF(1 - alpha)
 	stdev := radius / divisor
-	xdist := statistics.NormalDistribution{
-		Mean:              coordinate.X,
+	rdist := statistics.NormalDistribution{
+		Mean:              0,
 		StandardDeviation: stdev,
 	}
-	ydist := statistics.NormalDistribution{
-		Mean:              coordinate.Y,
-		StandardDeviation: stdev,
+	tdist := statistics.UniformDistribution{
+		Min: 1,
+		Max: 360,
 	}
 	rng := rand.New(rand.NewSource(seed))
 	clist := make([]Coordinate, count)
 	for i := 0; i < count; i++ {
 
-		x := xdist.InvCDF(.05 + .9*rng.Float64())
-		y := ydist.InvCDF(.05 + .9*rng.Float64())
+		theta := tdist.InvCDF(rng.Float64())
+		r := rdist.InvCDF(.5 + .9*rng.Float64())
+		//trig to the rescue.
+		x := r * math.Cos(theta)
+		y := r * math.Sin(theta)
+
 		clist[i] = Coordinate{X: x, Y: y}
 	}
 	return CoordinateList{Coordinates: clist}
