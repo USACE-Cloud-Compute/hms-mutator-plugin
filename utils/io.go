@@ -6,6 +6,7 @@ import (
 
 	"github.com/usace/cc-go-sdk"
 	"github.com/usace/filesapi"
+	filestore "github.com/usace/filesapi"
 )
 
 func WriteLocalBytes(b []byte, destinationRoot string, destinationPath string) error {
@@ -20,11 +21,11 @@ func ListAllPaths(ioManager cc.IOManager, StoreKey string, DirectoryKey string, 
 	if err != nil {
 		return pathList, err
 	}
-	session, ok := store.Session.(*cc.S3DataStore)
+	session, ok := store.Session.(*cc.FileDataStore[filestore.S3FS])
 	if !ok {
 		return pathList, fmt.Errorf("%v was not an s3datastore type", StoreKey)
 	}
-	rawSession := *session.GetFilestore()
+	rawSession := session.GetFilestore()
 	//if !ok {
 	//	return pathList, errors.New("could not convert s3datastore raw session into filestore type")
 	//}

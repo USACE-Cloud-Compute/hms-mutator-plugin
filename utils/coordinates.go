@@ -11,6 +11,7 @@ import (
 	"github.com/HydrologicEngineeringCenter/go-statistics/statistics"
 	"github.com/dewberry/gdal"
 	"github.com/usace/cc-go-sdk"
+	filestore "github.com/usace/filesapi"
 )
 
 type CoordinateList struct {
@@ -88,7 +89,7 @@ func ReadFishNets(iomanager cc.IOManager, storeKey string, filePaths []string, f
 	if err != nil {
 		return FishNetMap, err
 	}
-	session, ok := store.Session.(*cc.S3DataStore)
+	session, ok := store.Session.(*cc.FileDataStore[filestore.S3FS])
 	if !ok {
 		return FishNetMap, errors.New(fmt.Sprintf("%v was not an s3datastore type", storeKey))
 	}

@@ -46,7 +46,7 @@ require (
 require (
 	github.com/google/uuid v1.6.0
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
-	github.com/usace/cc-go-sdk v0.0.0-20250423183331-8eba23b117a8
+	github.com/usace/cc-go-sdk v0.0.0-20251016203852-bf987abfa874
 	golang.org/x/exp v0.0.0-20250305212735-054e65f0b394 // indirect
 	gonum.org/v1/gonum v0.16.0 // indirect
 )
