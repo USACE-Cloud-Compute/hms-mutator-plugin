@@ -24,7 +24,7 @@ const WORKING_DIRECTORY string = "/data"
 
 func main() {
 
-	fmt.Println("hms-mutator!")
+	fmt.Println("starting the hms-mutator")
 	//register tiledb
 	cc.DataStoreTypeRegistry.Register("TILEDB", tiledb.TileDbEventStore{})
 	pm, err := cc.InitPluginManager()
