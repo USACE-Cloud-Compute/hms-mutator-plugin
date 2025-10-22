@@ -1,0 +1,112 @@
+name: Build & Publish (multi-arch to GHCR)
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  OWNER: usace-cloud-compute
+  IMAGE_NAME: hms-mutator-plugin
+  TAG: latest
+
+jobs:
+  build:
+    name: Build per-arch
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runs_on: ubuntu-latest
+            platforms: linux/amd64
+            suffix: amd64
+            dockerfile: Dockerfile.prod
+          - arch: arm64
+            runs_on: ubuntu-24.04-arm
+            platforms: linux/arm64
+            suffix: arm64
+            dockerfile: Dockerfile.prod
+    runs-on: ${{ matrix.runs_on }}
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
+      arch: ${{ matrix.arch }}
+      suffix: ${{ matrix.suffix }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get tag version
+        id: version
+        run: |
+          # Extract the version number by removing the 'v' prefix
+          ref="${GITHUB_REF_NAME}"
+          v="${ref#v}"
+          echo "Extracted version: $v"
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          echo "minor=${v%.*}" >> "$GITHUB_OUTPUT"
+          echo "major=${v%%.*}" >> "$GITHUB_OUTPUT"
+
+      - name: Derive tags
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.OWNER }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=${{ steps.version.outputs.version }}-${{ matrix.suffix }}
+            type=raw,value=${{ steps.version.outputs.minor }}-${{ matrix.suffix }}
+            type=raw,value=${{ steps.version.outputs.major }}-${{ matrix.suffix }}
+            type=raw,value=${{ env.TAG }}-${{ matrix.suffix }}
+            type=sha,format=long,prefix=,suffix=-${{ matrix.suffix }}
+
+      - name: Build & push single-arch image
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          build-args: TARGETARCH=${{ matrix.suffix}}
+          platforms: ${{ matrix.platforms }}
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.arch }}
+
+  publish:
+    name: Publish multi-arch manifest
+    needs: [build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create and push manifest (by tags)
+        run: |
+          BASE=${{ env.REGISTRY }}/${{ env.OWNER }}/${{ env.IMAGE_NAME }}
+          # combine the arch-specific tags into one multi-arch tag
+          docker buildx imagetools create \
+            -t "$BASE:${{ env.TAG }}" \
+            "$BASE:${{ env.TAG }}-amd64" \
+            "$BASE:${{ env.TAG }}-arm64"
+
+      - name: Inspect final manifest
+        run: |
+          docker buildx imagetools inspect ${{ env.REGISTRY }}/${{ env.OWNER }}/${{ env.IMAGE_NAME }}:${{ env.TAG }}
