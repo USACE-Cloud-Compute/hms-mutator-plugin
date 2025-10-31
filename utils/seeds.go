@@ -6,7 +6,7 @@ import (
 	"io"
 	"slices"
 
-	"github.com/usace/cc-go-sdk"
+	"github.com/usace-cloud-compute/cc-go-sdk"
 )
 
 //@TODO revisit this and consider changing the interface/return types to avoid having empty close methods

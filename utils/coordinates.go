@@ -10,8 +10,8 @@ import (
 
 	"github.com/HydrologicEngineeringCenter/go-statistics/statistics"
 	"github.com/dewberry/gdal"
-	"github.com/usace/cc-go-sdk"
-	filestore "github.com/usace/filesapi"
+	"github.com/usace-cloud-compute/cc-go-sdk"
+	filestore "github.com/usace-cloud-compute/filesapi"
 )
 
 type CoordinateList struct {

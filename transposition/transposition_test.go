@@ -6,7 +6,7 @@ import (
 	"math/rand"
 	"testing"
 
-	"github.com/usace/hms-mutator/hms"
+	"github.com/usace-cloud-compute/hms-mutator/hms"
 )
 
 func TestInitTransposition(t *testing.T) {

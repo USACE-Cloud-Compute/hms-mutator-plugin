@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/usace/cc-go-sdk"
-	filestore "github.com/usace/filesapi"
+	"github.com/usace-cloud-compute/cc-go-sdk"
+	filestore "github.com/usace-cloud-compute/filesapi"
 )
 
 type DiscreteEmpiricalDistribution struct {

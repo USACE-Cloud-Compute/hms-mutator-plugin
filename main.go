@@ -11,11 +11,11 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/usace/cc-go-sdk"
-	tiledb "github.com/usace/cc-go-sdk/tiledb-store"
-	"github.com/usace/hms-mutator/actions"
-	"github.com/usace/hms-mutator/hms"
-	"github.com/usace/hms-mutator/utils"
+	"github.com/usace-cloud-compute/cc-go-sdk"
+	tiledb "github.com/usace-cloud-compute/cc-go-sdk/tiledb-store"
+	"github.com/usace-cloud-compute/hms-mutator/actions"
+	"github.com/usace-cloud-compute/hms-mutator/hms"
+	"github.com/usace-cloud-compute/hms-mutator/utils"
 )
 
 var pluginName string = "hms-mutator"

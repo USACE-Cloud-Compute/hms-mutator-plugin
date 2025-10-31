@@ -7,9 +7,9 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/usace/cc-go-sdk"
-	"github.com/usace/hms-mutator/hms"
-	"github.com/usace/hms-mutator/utils"
+	"github.com/usace-cloud-compute/cc-go-sdk"
+	"github.com/usace-cloud-compute/hms-mutator/hms"
+	"github.com/usace-cloud-compute/hms-mutator/utils"
 )
 
 func TestStratifiedLocations(t *testing.T) {

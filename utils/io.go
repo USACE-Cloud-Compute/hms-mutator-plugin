@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/usace/cc-go-sdk"
-	"github.com/usace/filesapi"
-	filestore "github.com/usace/filesapi"
+	"github.com/usace-cloud-compute/cc-go-sdk"
+	"github.com/usace-cloud-compute/filesapi"
+	filestore "github.com/usace-cloud-compute/filesapi"
 )
 
 func WriteLocalBytes(b []byte, destinationRoot string, destinationPath string) error {

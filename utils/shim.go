@@ -5,8 +5,8 @@ import (
 	"errors"
 	"io"
 
-	"github.com/usace/cc-go-sdk"
-	filestore "github.com/usace/filesapi"
+	"github.com/usace-cloud-compute/cc-go-sdk"
+	filestore "github.com/usace-cloud-compute/filesapi"
 )
 
 func GetFile(pm cc.PluginManager, datasource cc.DataSource, index string) ([]byte, error) {

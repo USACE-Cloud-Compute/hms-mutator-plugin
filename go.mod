@@ -1,4 +1,4 @@
-module github.com/usace/hms-mutator
+module github.com/usace-cloud-compute/hms-mutator
 
 go 1.23.0
 
@@ -7,6 +7,8 @@ toolchain go1.23.6
 require (
 	github.com/HydrologicEngineeringCenter/go-statistics v0.0.0-20240126145250-a17483ae0981
 	github.com/dewberry/gdal v0.3.4
+	github.com/usace-cloud-compute/cc-go-sdk v0.0.0-20251028200929-467ec9a1f90f
+	github.com/usace-cloud-compute/filesapi v0.0.0-20251028183744-20a294ce41f9
 )
 
 require (
@@ -37,7 +39,6 @@ require (
 	github.com/mattn/go-pointer v0.0.1 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/spf13/cast v1.7.1 // indirect
-	github.com/usace/filesapi v0.0.0-20250320132414-61c781325b9a // indirect
 	github.com/wk8/go-ordered-map/v2 v2.1.8 // indirect
 	go4.org/unsafe/assume-no-moving-gc v0.0.0-20230525183740-e7c30c78aeb2 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
@@ -45,8 +46,5 @@ require (
 
 require (
 	github.com/google/uuid v1.6.0
-	github.com/jmespath/go-jmespath v0.4.0 // indirect
-	github.com/usace/cc-go-sdk v0.0.0-20251016203852-bf987abfa874
-	golang.org/x/exp v0.0.0-20250305212735-054e65f0b394 // indirect
 	gonum.org/v1/gonum v0.16.0 // indirect
 )

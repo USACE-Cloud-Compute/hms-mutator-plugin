@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 
-	"github.com/usace/hms-mutator/hms"
+	"github.com/usace-cloud-compute/hms-mutator/hms"
 )
 
 type TranspositionSimulation struct {

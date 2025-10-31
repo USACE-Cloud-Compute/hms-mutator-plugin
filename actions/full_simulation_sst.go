@@ -8,8 +8,8 @@ import (
 
 	"time"
 
-	"github.com/usace/cc-go-sdk"
-	"github.com/usace/hms-mutator/utils"
+	"github.com/usace-cloud-compute/cc-go-sdk"
+	"github.com/usace-cloud-compute/hms-mutator/utils"
 )
 
 /*
@@ -110,6 +110,9 @@ func (frsst *FullSimulationSST) Compute(pm *cc.PluginManager) error {
 	}
 
 	blocks, err := utils.GetBlocks(pm, a)
+	if err != nil {
+		return err
+	}
 
 	results, err := compute(stormList, calibrationEvents, basinRootDir, basinName, fishNetMap, fishnettypeorname, stormTypeSeasonalityDistributionsMap, porStartDate, porEndDate, seeds, blocks)
 	if err != nil {

@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/usace/cc-go-sdk"
-	tiledb "github.com/usace/cc-go-sdk/tiledb-store"
+	"github.com/usace-cloud-compute/cc-go-sdk"
+	tiledb "github.com/usace-cloud-compute/cc-go-sdk/tiledb-store"
 )
 
 func TestReadBlocksFromTDB(t *testing.T) {

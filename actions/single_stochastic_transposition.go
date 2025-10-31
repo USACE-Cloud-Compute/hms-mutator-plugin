@@ -3,10 +3,10 @@ package actions
 import (
 	"time"
 
-	"github.com/usace/cc-go-sdk"
-	"github.com/usace/hms-mutator/hms"
-	"github.com/usace/hms-mutator/transposition"
-	"github.com/usace/hms-mutator/utils"
+	"github.com/usace-cloud-compute/cc-go-sdk"
+	"github.com/usace-cloud-compute/hms-mutator/hms"
+	"github.com/usace-cloud-compute/hms-mutator/transposition"
+	"github.com/usace-cloud-compute/hms-mutator/utils"
 )
 
 var pluginName string = "hms-mutator"
