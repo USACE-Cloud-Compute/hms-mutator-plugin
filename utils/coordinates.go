@@ -1,6 +1,5 @@
 package utils // CoordinateList represents a slice of Coordinates, can be used for many purposes, is used to identify transposition locations spaced thorughout the transposition domain.
 import (
-	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -91,7 +90,7 @@ func ReadFishNets(iomanager cc.IOManager, storeKey string, filePaths []string, f
 	}
 	session, ok := store.Session.(*cc.FileDataStore[filestore.S3FS])
 	if !ok {
-		return FishNetMap, errors.New(fmt.Sprintf("%v was not an s3datastore type", storeKey))
+		return FishNetMap, fmt.Errorf("%v was not an s3datastore type", storeKey)
 	}
 	root := store.Parameters.GetStringOrFail("root")
 

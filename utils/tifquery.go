@@ -40,10 +40,10 @@ func (cr *TifReader) Query(c Coordinate) (float64, error) {
 	py := int(igt[3] + c.X*igt[4] + c.Y*igt[5])
 	buffer := make([]float32, 1*1)
 	if px < 0 || px > rb.XSize() {
-		return cr.nodata, errors.New("X is out of range")
+		return cr.nodata, errors.New("x is out of range")
 	}
 	if py < 0 || py > rb.YSize() {
-		return cr.nodata, errors.New("Y is out of range")
+		return cr.nodata, errors.New("y is out of range")
 	}
 	err := rb.IO(gdal.RWFlag(gdal.Read), px, py, 1, 1, buffer, 1, 1, 0, 0)
 	if err != nil {

@@ -26,8 +26,8 @@ type Block struct {
 // }
 
 func GetBlocks(pm *cc.PluginManager, a cc.Action) ([]Block, error) {
-	var blocks []Block
-	var err error
+	//var blocks []Block
+	//var err error
 
 	useTileDb := a.Attributes.GetBooleanOrDefault(useTileDbStore, false)
 	blocksKey := a.Attributes.GetStringOrFail(blocksDataSourceAttrKey)
@@ -54,7 +54,7 @@ func GetBlocks(pm *cc.PluginManager, a cc.Action) ([]Block, error) {
 
 	}
 
-	return blocks, err
+	//return blocks, err
 }
 
 type JsonBlockReader struct {
