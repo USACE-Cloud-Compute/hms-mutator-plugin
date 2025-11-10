@@ -25,12 +25,12 @@ jobs:
             runs_on: ubuntu-latest
             platforms: linux/amd64
             suffix: amd64
-            dockerfile: Dockerfile.prod
+            dockerfile: Dockerfile
           - arch: arm64
             runs_on: ubuntu-24.04-arm
             platforms: linux/arm64
             suffix: arm64
-            dockerfile: Dockerfile.prod
+            dockerfile: Dockerfile
     runs-on: ${{ matrix.runs_on }}
     outputs:
       digest: ${{ steps.build.outputs.digest }}
