@@ -7,8 +7,8 @@ toolchain go1.23.6
 require (
 	github.com/HydrologicEngineeringCenter/go-statistics v0.0.0-20240126145250-a17483ae0981
 	github.com/dewberry/gdal v0.3.4
-	github.com/usace-cloud-compute/cc-go-sdk v0.0.0-20251028200929-467ec9a1f90f
-	github.com/usace-cloud-compute/filesapi v0.0.0-20251028183744-20a294ce41f9
+	github.com/usace-cloud-compute/cc-go-sdk v0.0.0-20251110180756-cac3686e146b
+	github.com/usace-cloud-compute/filesapi v0.0.0-20251107191432-8084e0da4b5c
 )
 
 require (

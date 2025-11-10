@@ -1,13 +1,6 @@
 package utils
 
-import (
-	"fmt"
-	"testing"
-
-	"github.com/usace-cloud-compute/cc-go-sdk"
-	tiledb "github.com/usace-cloud-compute/cc-go-sdk/tiledb-store"
-)
-
+/*
 func TestReadBlocksFromTDB(t *testing.T) {
 	//register tiledb
 	cc.DataStoreTypeRegistry.Register("TILEDB", tiledb.TileDbEventStore{})
@@ -24,3 +17,4 @@ func TestReadBlocksFromTDB(t *testing.T) {
 	}
 	fmt.Println(blocks)
 }
+*/

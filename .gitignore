@@ -13,6 +13,6 @@
 hms-mutator
 .vscode/launch.json
 exampledata/
-
+.env
 # Dependency directories (remove the comment below to include it)
 # vendor/

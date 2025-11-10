@@ -25,7 +25,8 @@ COPY . /src
 
 WORKDIR /src
 
-RUN go build -o hms-mutator
+#RUN go build -o hms-mutator
+RUN make build
 
 #-------------
 
