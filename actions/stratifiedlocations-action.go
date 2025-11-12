@@ -1,6 +1,7 @@
 package actions
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"math"
@@ -18,6 +19,103 @@ import (
 //this action is designed to create a set of uniformly distributed points within a bounding box that are within a polygon
 //it will also prepare grid files for each storm in the storm catalog and store them in distinct output locations by storm name
 
+const (
+	stratifiedLocationsActionName string = "valid-stratified-locations"
+)
+
+func init() {
+	cc.ActionRegistry.RegisterAction(stratifiedLocationsActionName, &StratifiedLocationsAction{})
+}
+
+type StratifiedLocationsAction struct {
+	cc.ActionRunnerBase
+}
+
+func (sla *StratifiedLocationsAction) Run() error {
+
+	gridFileBytes, err := sla.PluginManager.Get(cc.DataSourceOpInput{
+		DataSourceName: "HMS Model",
+		PathKey:        "grid",
+	})
+	if err != nil {
+		sla.Log("unable to read grid file", "error", err)
+		return err
+	}
+
+	transpositionDomainBytes, err := sla.PluginManager.Get(cc.DataSourceOpInput{
+		DataSourceName: "TranspositionRegion",
+		PathKey:        "default",
+	})
+	if err != nil {
+		sla.Log("unable to read transposition region file", "error", err)
+		return err
+	}
+
+	watershedDomainBytes, err := sla.PluginManager.Get(cc.DataSourceOpInput{
+		DataSourceName: "WatershedBoundary",
+		PathKey:        "default",
+	})
+	if err != nil {
+		sla.Log("unable to read watershed boundary file", "error", err)
+		return err
+	}
+
+	gridFile, err := hms.ReadGrid(gridFileBytes)
+	if err != nil {
+		sla.Log("unable to parse grid", "error", err)
+		return err
+	}
+
+	stratifiedCompute, err := InitStratifiedCompute(sla.Action, gridFile, transpositionDomainBytes, watershedDomainBytes) //, payload.Outputs[0])
+	if err != nil {
+		sla.Log("could not initalize valid stratified locations for this payload", "error", err)
+		return err
+	}
+	//inputSource, err := pm.GetInputDataSource("Cumulative Grids")
+	outputDataSource, err := sla.Action.GetOutputDataSource("ValidLocations")
+	if err != nil {
+		sla.Log("could not put valid stratified locations for this payload", "error", err)
+		return err
+	}
+
+	root := outputDataSource.Paths["default"]
+	output, err := stratifiedCompute.DetermineValidLocationsQuickly(sla.PluginManager.IOManager) //sla.DetermineValidLocations(inputSource) //update to be based on output location?
+	if err != nil {
+		sla.Log("could not compute valid stratified locations for this payload")
+		return err
+	}
+
+	outputDataSource.Paths["default"] = fmt.Sprintf("%v/%v.csv", root, "AllStormsAllLocations")
+	outbytes := make([]byte, 0)
+	outbytes = append(outbytes, "StormName,X,Y,IsValid"...)
+	//create random list of ints
+	indexes := make([]int, len(output.AllStormsAllLocations))
+	rand := rand.New(rand.NewSource(945631))
+	for i := 0; i < len(indexes); i++ {
+		j := rand.Intn(i + 1)
+		if i != j {
+			indexes[i] = indexes[j]
+		}
+		indexes[j] = i
+	}
+	for i := range output.AllStormsAllLocations {
+		outbytes = append(outbytes, fmt.Sprintf("%v,%v,%v,%v\n", output.AllStormsAllLocations[indexes[i]].StormName, output.AllStormsAllLocations[indexes[i]].Coordinate.X, output.AllStormsAllLocations[indexes[i]].Coordinate.Y, output.AllStormsAllLocations[indexes[i]].IsValid)...)
+	}
+
+	_, err = sla.PluginManager.Put(cc.PutOpInput{
+		SrcReader: bytes.NewReader(outbytes),
+		DataSourceOpInput: cc.DataSourceOpInput{
+			DataSource: &outputDataSource,
+			PathKey:    "default",
+		},
+	})
+	if err != nil {
+		sla.Log("failed to copy output to destination", "error", err)
+	}
+	return err
+}
+
+// ---------------------------------------------------------
 type StratifiedCompute struct {
 	Spacing                  float64
 	GridFile                 hms.GridFile

@@ -1,30 +1,23 @@
 package main
 
 import (
-	"encoding/json"
-	"errors"
 	"fmt"
-	"math/rand"
-	"path"
-	"strconv"
-	"strings"
-	"time"
+	"os"
 
-	"github.com/google/uuid"
 	"github.com/usace-cloud-compute/cc-go-sdk"
 	tiledb "github.com/usace-cloud-compute/cc-go-sdk/tiledb-store"
-	"github.com/usace-cloud-compute/hms-mutator/actions"
-	"github.com/usace-cloud-compute/hms-mutator/hms"
-	"github.com/usace-cloud-compute/hms-mutator/utils"
+	_ "github.com/usace-cloud-compute/hms-mutator/actions"
 )
 
-var pluginName string = "hms-mutator"
+var commit string
+var date string
+
+//var pluginName string = "hms-mutator"
 
 const WORKING_DIRECTORY string = "/data"
 
 func main() {
 
-	fmt.Println("starting the hms-mutator")
 	//register tiledb
 	cc.DataStoreTypeRegistry.Register("TILEDB", tiledb.TileDbEventStore{})
 	pm, err := cc.InitPluginManager()
@@ -32,11 +25,31 @@ func main() {
 		fmt.Println("could not initiate plugin manager")
 		return
 	}
+	//
+	pm.Logger.Info("HMS Mutator", "version", commit, "build-date", date)
+
+	err = pm.RunActions()
+	if err != nil {
+		pm.Logger.Error("failed to run actions", "error", err)
+		os.Exit(1) //exit with failure condition
+	}
+}
+
+/////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////
+
+/*
 	// get the payload.
 	payload := pm.Payload
 	controlStartTime := time.Now() //introduces a dependency of select random basin for single stochastic transposition. consider consolidating into one action to remove the dependency.
 	for _, a := range payload.Actions {
-		switch a.Type {
+		switch a.Name {
 		case "select_random_basin":
 			seedSet, err := getSeeds(payload, pm)
 			if err != nil {
@@ -206,7 +219,7 @@ func main() {
 				gridFileOutput.Paths["default"] = fmt.Sprintf("%v/%v.grid", root, k)
 				utils.PutFile(v, pm.IOManager, gridFileOutput, "default")
 			}
-		case "valid_stratified_locations": //aka fishnets
+		case "valid-stratified-locations": //aka fishnets
 			gridFileBytes, err := getInputBytes("HMS Model", ".grid", payload, pm)
 			if err != nil {
 				pm.Logger.Error(err.Error())
@@ -413,3 +426,5 @@ func getSeeds(payload cc.Payload, pm *cc.PluginManager) (utils.SeedSet, error) {
 	}
 	return seedSet, err
 }
+
+*/
