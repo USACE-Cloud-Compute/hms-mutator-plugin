@@ -7,12 +7,13 @@ import (
 	"math/rand"
 	"path"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/dewberry/gdal"
-	"github.com/usace-cloud-compute/cc-go-sdk"
-	"github.com/usace-cloud-compute/hms-mutator/hms"
-	"github.com/usace-cloud-compute/hms-mutator/utils"
+	"github.com/fema-ffrd/cc-go-sdk"
+	"github.com/fema-ffrd/hms-mutator/hms"
+	"github.com/fema-ffrd/hms-mutator/utils"
 )
 
 //this action is designed to create a set of uniformly distributed points within a bounding box that are within a polygon
@@ -171,7 +172,7 @@ func (sc StratifiedCompute) DetermineValidLocations(inputRoot cc.DataSource) (Va
 	return computeResult, nil
 }
 
-var sem = make(chan int, 7)
+var sem = make(chan int, 14)
 
 func (sc StratifiedCompute) DetermineValidLocationsQuickly(iomanager cc.IOManager) (ValidLocationsComputeResult, error) {
 	var computeResult ValidLocationsComputeResult
@@ -209,19 +210,30 @@ func (sc StratifiedCompute) DetermineValidLocationsQuickly(iomanager cc.IOManage
 	stormcenterbytes := make([]byte, 0)
 	names := make([]string, len(sc.GridFile.Events))
 	locationsslice := make([]utils.CoordinateList, len(sc.GridFile.Events))
-	for i := 0; i < len(sc.GridFile.Events); i++ { //num, storm := range sc.GridFile.Events {
+	var wg sync.WaitGroup
+	stormCount := len(sc.GridFile.Events)
+	// TODO: Remove limit after testing
+	if stormCount > 40 {
+		stormCount = 40 // Limit to 40 storms for testing
+	}
+	fmt.Printf("Starting processing of %d storms with up to 14 in parallel...\n", stormCount)
+	startTime := time.Now()
+	for i := 0; i < stormCount; i++ { //num, storm := range sc.GridFile.Events {
+		wg.Add(1)
 		sem <- 1
 		go func(num int) error {
-			start := time.Now()
+			defer wg.Done()
+			defer func() { <-sem }()
+			// start := time.Now()
 			storm := sc.GridFile.Events[num]
-			fmt.Printf("working on storm %v\n", storm.Name)
+			// elapsed := time.Since(startTime)
+			// fmt.Printf("[%d/%d] (%.1fs) Starting storm: %s\n", num+1, len(sc.GridFile.Events), elapsed.Seconds(), storm.Name)
 			//create a validlocation coordinate list.
 			validLocations := utils.CoordinateList{Coordinates: make([]utils.Coordinate, 0)}
 			//determine the center of the storm.
 
 			stormCenter, err := gdal.CreateFromWKT(fmt.Sprintf("Point (%v %v)\n", storm.CenterX, storm.CenterY), ref)
 			if err != nil {
-				<-sem
 				return err
 			}
 
@@ -279,19 +291,18 @@ func (sc StratifiedCompute) DetermineValidLocationsQuickly(iomanager cc.IOManage
 			outputDataSource.Paths["default"] = fmt.Sprintf("%v/%v", validlocationsroot, name)
 			err = utils.PutFile(validLocations.ToBytes(), iomanager, outputDataSource, "default")
 			if err != nil {
-				<-sem
 				return err
 			}
 			//end := time.Now()
-			dur := time.Since(start)
-			fmt.Printf("%v took %v seconds\n", name, dur.Seconds())
-			<-sem
+			// dur := time.Since(start)
+			// elapsedTotal := time.Since(startTime)
+			// fmt.Printf("[DONE] %v took %.2fs (total: %.1fs)\n", name, dur.Seconds(), elapsedTotal.Seconds())
 			return nil
 		}(i)
 	} //next storm
-	for i := 0; i < cap(sem); i++ {
-		sem <- i
-	}
+	wg.Wait()
+	totalTime := time.Since(startTime)
+	fmt.Printf("\n=== COMPLETED ===\nProcessed %d storms in %.1f seconds (%.1f minutes)\n", stormCount, totalTime.Seconds(), totalTime.Minutes())
 	for i, n := range names {
 		validLocationMap[n] = locationsslice[i]
 	}
