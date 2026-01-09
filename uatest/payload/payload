@@ -1,0 +1,61 @@
+{
+  "attributes": {},
+  "stores": [
+    {
+      "name": "FSB",
+      "store_type": "FS",
+      "params": { "root": "/mnt/payload" }
+    }
+  ],
+  "inputs": [
+    {
+      "name": "HMS Model",
+      "paths": {
+        "grid": "catalog.grid"
+      },
+      "store_name": "FSB"
+    },
+    {
+      "name": "TranspositionRegion",
+      "paths": {
+        "default": "transposition-domain.gpkg"
+      },
+      "store_name": "FSB"
+    },
+    {
+      "name": "WatershedBoundary",
+      "paths": {
+        "default": "watershed-boundary.gpkg"
+      },
+      "store_name": "FSB"
+    },
+    {
+      "name": "seeds",
+      "paths": {
+        "default": "seeds.json"
+      },
+      "store_name": "FSB"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "ValidLocations",
+      "paths": {
+        "default": "fishnets"
+      },
+      "store_name": "FSB"
+    }
+  ],
+  "actions": [
+    {
+      "name": "valid_stratified_locations",
+      "type": "valid_stratified_locations",
+      "description": "create stratified fishnets for storms",
+      "attributes": {
+        "_comment": "4km in meters",
+        "spacing": 4000,
+        "acceptance_threshold": 0.0
+      }
+    }
+  ]
+}
