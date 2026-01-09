@@ -66,7 +66,7 @@ func ReadGrid(gridResource []byte) (GridFile, error) {
 			gridFound = true
 			precipGridLines = make([]string, 0)
 			tempGridLines = make([]string, 0)
-			name := strings.TrimLeft(l, GridStartKeyword)
+			name := strings.TrimSpace(strings.Replace(l, GridStartKeyword, "", 1))
 			//wont know it is precip for one more line...
 			//so get the name just in case.
 			//add the first line just in case.
@@ -78,7 +78,7 @@ func ReadGrid(gridResource []byte) (GridFile, error) {
 			tempGridLines = append(tempGridLines, l)
 		}
 		if strings.Contains(l, GridTypeKeyword) {
-			gridType := strings.TrimLeft(l, GridTypeKeyword)
+			gridType := strings.TrimSpace(strings.Replace(l, GridTypeKeyword, "", 1))
 			if gridType == PrecipitationKeyword {
 				isPrecipGrid = true
 				foundX = false
@@ -95,7 +95,7 @@ func ReadGrid(gridResource []byte) (GridFile, error) {
 		if gridFound {
 			if isPrecipGrid {
 				if strings.Contains(l, GridStormCenterXKeyword) {
-					centerxstring := strings.TrimLeft(l, GridStormCenterXKeyword)
+					centerxstring := strings.TrimSpace(strings.Replace(l, GridStormCenterXKeyword, "", 1))
 					x, err := strconv.ParseFloat(centerxstring, 64)
 					if err != nil {
 						foundX = false
@@ -105,7 +105,7 @@ func ReadGrid(gridResource []byte) (GridFile, error) {
 					}
 				}
 				if strings.Contains(l, GridStormCenterYKeyword) {
-					centerystring := strings.TrimLeft(l, GridStormCenterYKeyword)
+					centerystring := strings.TrimSpace(strings.Replace(l, GridStormCenterYKeyword, "", 1))
 					y, err := strconv.ParseFloat(centerystring, 64)
 					if err != nil {
 						foundY = false
@@ -151,7 +151,7 @@ func ReadGrid(gridResource []byte) (GridFile, error) {
 		}
 
 		if strings.Contains(l, DssPathNameKeyword) {
-			pathName := strings.TrimLeft(l, DssPathNameKeyword)
+			pathName := strings.TrimSpace(strings.Replace(l, DssPathNameKeyword, "", 1))
 			parts := strings.Split(pathName, "/")
 			startTime := parts[4] //parse DDMMMYYYY:HHMM //24 hour clocktime
 			precipGrid.StartTime = startTime
