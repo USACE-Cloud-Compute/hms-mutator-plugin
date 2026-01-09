@@ -54,6 +54,8 @@ github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/dewberry/gdal v0.3.4 h1:bm49t5v9XsGujYiL1SNJbRJHRrVIugpU7D/mu1GuzXc=
 github.com/dewberry/gdal v0.3.4/go.mod h1:i6fpE1FZsyqYGxk7CWI4VR20rpnnsk0cggCx2pdeqME=
+github.com/fema-ffrd/cc-go-sdk v0.0.0-20260108225159-036ff65c60ba h1:l3QNVMtEs+w3LLMSP68ZG8nuUoc4LnE5sbHjWqkZyyw=
+github.com/fema-ffrd/cc-go-sdk v0.0.0-20260108225159-036ff65c60ba/go.mod h1:6SP/lMFeiMpaE2prSiKM/kv07o8QXwegJWcN5otEIXk=
 github.com/fogleman/gg v1.2.1-0.20190220221249-0403632d5b90/go.mod h1:R/bRT+9gY/C5z7JzPU0zXsXHKM4/ayA+zqcVNZzPa1k=
 github.com/fogleman/gg v1.3.0/go.mod h1:R/bRT+9gY/C5z7JzPU0zXsXHKM4/ayA+zqcVNZzPa1k=
 github.com/frankban/quicktest v1.14.6 h1:7Xjx+VpznH+oBnejlPUj8oUpdxnVs4f8XU8WnHkI4W8=
@@ -97,12 +99,6 @@ github.com/spf13/cast v1.7.1/go.mod h1:ancEpBxwJDODSW/UG4rDrAqiKolqNNh2DX3mk86cA
 github.com/stretchr/testify v1.2.2/go.mod h1:a8OnRcib4nhh0OaRAV+Yts87kKdq0PP7pXfy6kDkUVs=
 github.com/stretchr/testify v1.8.1 h1:w7B6lhMri9wdJUVmEZPGGhZzrYTPvgJArz7wNPgYKsk=
 github.com/stretchr/testify v1.8.1/go.mod h1:w2LPCIKwWwSfY2zedu0+kehJoqGctiVI29o6fzry7u4=
-github.com/usace-cloud-compute/cc-go-sdk v0.0.0-20251028200929-467ec9a1f90f h1:1gZOYxrk0yUhXeY8dX/tmp6e3C1XBY4i3XH129ByIZM=
-github.com/usace-cloud-compute/cc-go-sdk v0.0.0-20251028200929-467ec9a1f90f/go.mod h1:xoR5I8rOZZvUT8rpT/5E2EzFCVztcUzfeEaPofX7rRA=
-github.com/usace-cloud-compute/cc-go-sdk v0.0.0-20251110180756-cac3686e146b h1:OuTZCioljCEQ9e2tBKaXi1VQ/6CQs4NFQi+Ft6+EgvU=
-github.com/usace-cloud-compute/cc-go-sdk v0.0.0-20251110180756-cac3686e146b/go.mod h1:HZsGTrNUUdjfqqJJaLpSBEKoIDmu/vnye2KK/AwchDo=
-github.com/usace-cloud-compute/filesapi v0.0.0-20251028183744-20a294ce41f9 h1:Xq+vXV+1T0MQb32c6CsYwn56XDbWSIO3CM6IYv6Im9A=
-github.com/usace-cloud-compute/filesapi v0.0.0-20251028183744-20a294ce41f9/go.mod h1:6iMo7JYrqbf0dfSVGqrAJfoVhi2hKJysD5o8mXi0XhI=
 github.com/usace-cloud-compute/filesapi v0.0.0-20251107191432-8084e0da4b5c h1:1Srw2WpT9tcEIUY853oeojXJjPH8iTYFGLXPaIrUe+I=
 github.com/usace-cloud-compute/filesapi v0.0.0-20251107191432-8084e0da4b5c/go.mod h1:6iMo7JYrqbf0dfSVGqrAJfoVhi2hKJysD5o8mXi0XhI=
 github.com/wk8/go-ordered-map/v2 v2.1.8 h1:5h/BUHu93oj4gIdvHHHGsScSTMijfx5PeYkE/fJgbpc=

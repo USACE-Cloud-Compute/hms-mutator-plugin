@@ -10,12 +10,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/fema-ffrd/cc-go-sdk"
+	tiledb "github.com/fema-ffrd/cc-go-sdk/tiledb-store"
+	"github.com/fema-ffrd/hms-mutator/actions"
+	"github.com/fema-ffrd/hms-mutator/hms"
+	"github.com/fema-ffrd/hms-mutator/utils"
 	"github.com/google/uuid"
-	"github.com/usace-cloud-compute/cc-go-sdk"
-	tiledb "github.com/usace-cloud-compute/cc-go-sdk/tiledb-store"
-	"github.com/usace-cloud-compute/hms-mutator/actions"
-	"github.com/usace-cloud-compute/hms-mutator/hms"
-	"github.com/usace-cloud-compute/hms-mutator/utils"
 )
 
 var pluginName string = "hms-mutator"
@@ -29,7 +29,7 @@ func main() {
 	cc.DataStoreTypeRegistry.Register("TILEDB", tiledb.TileDbEventStore{})
 	pm, err := cc.InitPluginManager()
 	if err != nil {
-		fmt.Println("could not initiate plugin manager")
+		fmt.Printf("could not initiate plugin manager: %v\n", err)
 		return
 	}
 	// get the payload.

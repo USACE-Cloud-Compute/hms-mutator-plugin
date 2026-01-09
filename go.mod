@@ -1,4 +1,4 @@
-module github.com/usace-cloud-compute/hms-mutator
+module github.com/fema-ffrd/hms-mutator
 
 go 1.23.0
 
@@ -7,7 +7,7 @@ toolchain go1.23.6
 require (
 	github.com/HydrologicEngineeringCenter/go-statistics v0.0.0-20240126145250-a17483ae0981
 	github.com/dewberry/gdal v0.3.4
-	github.com/usace-cloud-compute/cc-go-sdk v0.0.0-20251110180756-cac3686e146b
+	github.com/fema-ffrd/cc-go-sdk v0.0.0-20260108225159-036ff65c60ba
 	github.com/usace-cloud-compute/filesapi v0.0.0-20251107191432-8084e0da4b5c
 )
 

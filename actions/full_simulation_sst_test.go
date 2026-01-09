@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/usace-cloud-compute/cc-go-sdk"
-	tiledb "github.com/usace-cloud-compute/cc-go-sdk/tiledb-store"
+	"github.com/fema-ffrd/cc-go-sdk"
+	tiledb "github.com/fema-ffrd/cc-go-sdk/tiledb-store"
 )
 
 func Test_RecordSet(t *testing.T) {

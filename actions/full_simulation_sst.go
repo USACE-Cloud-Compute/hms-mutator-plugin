@@ -8,8 +8,8 @@ import (
 
 	"time"
 
-	"github.com/usace-cloud-compute/cc-go-sdk"
-	"github.com/usace-cloud-compute/hms-mutator/utils"
+	"github.com/fema-ffrd/cc-go-sdk"
+	"github.com/fema-ffrd/hms-mutator/utils"
 )
 
 /*
