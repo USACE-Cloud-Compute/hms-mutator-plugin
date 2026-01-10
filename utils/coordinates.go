@@ -88,9 +88,58 @@ func ReadFishNets(iomanager cc.IOManager, storeKey string, filePaths []string, f
 	if err != nil {
 		return FishNetMap, err
 	}
+	
+	// Try BlockFS first (used for FS storage type)
+	blockfsSession, ok := store.Session.(*cc.FileDataStore[filestore.BlockFS])
+	if ok {
+		names := make([]string, len(filePaths))
+		coordinates := make([]CoordinateList, len(filePaths))
+		
+		for i := 0; i < len(filePaths); i++ {
+			sem <- 1
+			go func(num int) error {
+				defer func() { <-sem }()
+				path := filePaths[num]
+				// Use relative path - FileDataStore handles the root
+				relativePath := fmt.Sprintf("%v%v", fishnetdirectory, path)
+				reader, err := blockfsSession.Get(relativePath, "")
+				if err != nil {
+					return err
+				}
+				bytes, err := io.ReadAll(reader)
+				if err != nil {
+					return err
+				}
+				coordlist, err := BytesToCoordinateList(bytes)
+				if err != nil {
+					return err
+				}
+				parts := strings.Split(path, "/")
+				lastpart := parts[len(parts)-1]
+				nameKey := strings.Split(lastpart, ".")[0]
+				names[num] = nameKey
+				coordinates[num] = coordlist
+				return nil
+			}(i)
+		}
+		
+		// Wait for all goroutines
+		for i := 0; i < len(filePaths); i++ {
+			for len(sem) > 0 || i > len(filePaths)-len(sem) {
+				// Wait for completion
+			}
+		}
+		
+		for i := 0; i < len(filePaths); i++ {
+			FishNetMap[names[i]] = coordinates[i]
+		}
+		return FishNetMap, nil
+	}
+	
+	// Try S3FS as fallback
 	session, ok := store.Session.(*cc.FileDataStore[filestore.S3FS])
 	if !ok {
-		return FishNetMap, fmt.Errorf("%v was not an s3datastore type", storeKey)
+		return FishNetMap, fmt.Errorf("%v was not an s3datastore or blockfs type", storeKey)
 	}
 	root := store.Parameters.GetStringOrFail("root")
 

@@ -61,9 +61,38 @@ func ReadStormDistributions(iomanager cc.IOManager, storeKey string, filePaths [
 	if err != nil {
 		return StormTypeSeasonalityDistributionMap, err
 	}
+	
+	// Try BlockFS first (used for FS storage type)
+	blockfsStore, ok := store.Session.(*cc.FileDataStore[filestore.BlockFS])
+	if ok {
+		root := store.Parameters.GetStringOrFail("root")
+		for _, path := range filePaths {
+			// Build full path relative to root
+			fullPath := fmt.Sprintf("%v/%v%v", root, directory, path)
+			// Remove root prefix to get path relative to store root
+			relativePath := strings.Replace(fullPath, fmt.Sprintf("%v/", root), "", 1)
+			fmt.Printf("DEBUG: root=%s, relativePath=%s\n", root, relativePath)
+			reader, err := blockfsStore.Get(relativePath, "")
+			if err != nil {
+				return StormTypeSeasonalityDistributionMap, err
+			}
+			data, err := io.ReadAll(reader)
+			if err != nil {
+				return StormTypeSeasonalityDistributionMap, err
+			}
+			// Use CSV parser instead of JSON
+			dist := DescreteEmpiricalDistributionFromBytes(data)
+			stormType := strings.Split(path, "/")[len(strings.Split(path, "/"))-1]
+			stormType = strings.Replace(stormType, ".csv", "", 1)
+			StormTypeSeasonalityDistributionMap[stormType] = dist
+		}
+		return StormTypeSeasonalityDistributionMap, nil
+	}
+	
+	// Try S3FS as fallback
 	session, ok := store.Session.(*cc.FileDataStore[filestore.S3FS])
 	if !ok {
-		return StormTypeSeasonalityDistributionMap, fmt.Errorf("%v was not an s3datastore type", storeKey)
+		return StormTypeSeasonalityDistributionMap, fmt.Errorf("%v was not an s3datastore or blockfs type", storeKey)
 	}
 	root := store.Parameters.GetStringOrFail("root")
 	for _, path := range filePaths {
