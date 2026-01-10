@@ -1,0 +1,60 @@
+{
+  "attributes":{},
+  "stores": [
+    {
+      "name": "FSB",
+      "store_type": "FS",
+      "params": { "root": "/mnt/payload" }
+    }
+  ],
+  "inputs": [],
+  "actions": [
+    {
+      "type": "full_simulation_sst",
+      "name": "full_simulation_sst",
+      "description": "sample and place storms",
+      "attributes": {
+        "output_data_source": "storms",
+        "storms_directory": "storms/",
+        "storms_store": "FSB",
+        "fishnet_directory": "fishnets/",
+        "fishnet_store": "FSB",
+        "fishnet_type_or_name": "type",
+        "storm_type_seasonality_distribution_directory": "seasonality_distributions/",
+        "storm_type_seasonality_distribution_store": "FSB",
+        "basin_root_directory": "basinmodels",
+        "basin_name": "trinity",
+        "por_start_date": "19790101",
+        "por_end_date": "19791231",
+        "calibration_event_names": ["19790222_72hr_ST1", "19790725_72hr_ST2", "19790502_72hr_ST5"],
+        "seed_datasource_key": "seeds",
+        "blocks_datasource_key": "blocks"
+      },
+      "inputs": [
+        {
+          "name": "seeds",
+          "store_name": "FSB",
+          "paths": {
+            "default": "seeds.json"
+          }
+        },
+        {
+          "name": "blocks",
+          "store_name": "FSB",
+          "paths": {
+            "default": "blocks.json"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "storms",
+          "paths": {
+            "default": "storms.csv"
+          },
+          "store_name": "FSB"
+        }
+      ]
+    }
+  ]
+}
