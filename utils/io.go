@@ -27,7 +27,8 @@ func ListAllPaths(ioManager cc.IOManager, StoreKey string, DirectoryKey string, 
 	_, ok := store.Session.(*cc.FileDataStore[filestore.BlockFS])
 	if ok {
 		// For BlockFS, we can use os.ReadDir
-		dirPath := fmt.Sprintf("/mnt/payload/%s", DirectoryKey)
+		root := store.Parameters.GetStringOrFail("root")
+		dirPath := fmt.Sprintf("%s/%s", root, DirectoryKey)
 		entries, err := os.ReadDir(dirPath)
 		if err != nil {
 			return pathList, err
