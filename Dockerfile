@@ -41,7 +41,7 @@ ENV LIBRARY_PATH="${TILEDB_LIB}/lib"
 
 RUN apt update &&\
     apt -y install libssl-dev libbz2-dev libgdbm-dev uuid-dev libncurses-dev libffi-dev libgdbm-compat-dev sqlite3 lzma lzma-dev &&\
-    apt -y install gdal-bin gdal-data libgdal-dev
+    apt -y install gdal-bin gdal-data libgdal-dev ca-certificates
 
 COPY --from=builder /usr/local/lib/tiledb /usr/local/lib/tiledb
 COPY --from=builder /src/hms-mutator /app/hms-mutator
