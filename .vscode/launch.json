@@ -76,27 +76,7 @@
             "request": "launch",
             "mode": "auto",
             "program": "${fileDirname}",
-            "env": {
-                "CC_AWS_DEFAULT_REGION": "us-east-1",
-                "CC_AWS_ACCESS_KEY_ID": "AKIAIOSFODNN7EXAMPLE",
-                "CC_AWS_SECRET_ACCESS_KEY": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
-                "CC_AWS_S3_BUCKET": "cc-store",
-                "CC_ROOT": "cc_store",
-                "CC_MANIFEST_ID": "kanawha/hms-mutator",
-                "CC_EVENT_NUMBER": "298",
-                "CC_S3_ENDPOINT": "host.docker.internal:9000",
-                "CC_S3_MOCK": "true",
-                "CC_S3_DISABLE_SSL": "true",
-                "CC_S3_FORCE_PATH_STYLE": "true",
-                "FFRD_AWS_DEFAULT_REGION": "us-east-1",
-                "FFRD_AWS_ACCESS_KEY_ID": "AKIAIOSFODNN7EXAMPLE",
-                "FFRD_AWS_SECRET_ACCESS_KEY": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
-                "FFRD_AWS_S3_BUCKET": "model-library",
-                "FFRD_S3_ENDPOINT": "host.docker.internal:9000",
-                "FFRD_S3_MOCK": "true",
-                "FFRD_S3_DISABLE_SSL": "true",
-                "FFRD_S3_FORCE_PATH_STYLE": "true",
-            }
+            "envFile": "${workspaceFolder}/.env"
         }
     ]
 }

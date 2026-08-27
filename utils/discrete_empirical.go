@@ -6,7 +6,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/usace/cc-go-sdk"
+	"github.com/usace-cloud-compute/cc-go-sdk"
+	filestore "github.com/usace-cloud-compute/filesapi"
 )
 
 type DiscreteEmpiricalDistribution struct {
@@ -60,7 +61,7 @@ func ReadStormDistributions(iomanager cc.IOManager, storeKey string, filePaths [
 	if err != nil {
 		return StormTypeSeasonalityDistributionMap, err
 	}
-	session, ok := store.Session.(*cc.S3DataStore)
+	session, ok := store.Session.(*cc.FileDataStore[filestore.S3FS])
 	if !ok {
 		return StormTypeSeasonalityDistributionMap, fmt.Errorf("%v was not an s3datastore type", storeKey)
 	}

@@ -5,7 +5,8 @@ import (
 	"errors"
 	"io"
 
-	"github.com/usace/cc-go-sdk"
+	"github.com/usace-cloud-compute/cc-go-sdk"
+	filestore "github.com/usace-cloud-compute/filesapi"
 )
 
 func GetFile(pm cc.PluginManager, datasource cc.DataSource, index string) ([]byte, error) {
@@ -14,7 +15,7 @@ func GetFile(pm cc.PluginManager, datasource cc.DataSource, index string) ([]byt
 	if err != nil {
 		return data, err
 	}
-	s3DataStore, ok := store.Session.(*cc.S3DataStore)
+	s3DataStore, ok := store.Session.(*cc.FileDataStore[filestore.S3FS])
 	if !ok {
 		return data, err
 	}
@@ -30,7 +31,7 @@ func PutFile(data []byte, pm cc.IOManager, datasource cc.DataSource, index strin
 	if err != nil {
 		return err
 	}
-	s3DataStore, ok := store.Session.(*cc.S3DataStore)
+	s3DataStore, ok := store.Session.(*cc.FileDataStore[filestore.S3FS])
 	if !ok {
 		return errors.New("session not the right type")
 	}

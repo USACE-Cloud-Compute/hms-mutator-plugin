@@ -6,9 +6,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/usace/cc-go-sdk"
-	"github.com/usace/hms-mutator/hms"
-	"github.com/usace/hms-mutator/utils"
+	"github.com/usace-cloud-compute/cc-go-sdk"
+	"github.com/usace-cloud-compute/hms-mutator/hms"
+	"github.com/usace-cloud-compute/hms-mutator/utils"
 )
 
 //the objective of this action is to randomize the basin utilized in an HMS compute

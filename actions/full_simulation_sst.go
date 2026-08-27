@@ -9,8 +9,8 @@ import (
 
 	"time"
 
-	"github.com/usace/cc-go-sdk"
-	"github.com/usace/hms-mutator/utils"
+	"github.com/usace-cloud-compute/cc-go-sdk"
+	"github.com/usace-cloud-compute/hms-mutator/utils"
 )
 
 /*
@@ -127,23 +127,13 @@ func (frsst *FullSimulationSST) Compute(pm *cc.PluginManager) error {
 	if err != nil {
 		return err
 	}
-	//seeds
-	seedsKey := a.Attributes.GetStringOrFail("seed_datasource_key")
-	seedInput, err := a.GetInputDataSource(seedsKey) //expecting this to be a tiledb dense array
+
+	seeds, err := utils.GetSeeds(a)
 	if err != nil {
 		return err
 	}
-	seeds, err := utils.ReadSeedsFromTiledb(a.IOManager, seedInput.StoreName, "seeds", "hms-mutator") //hms-mutator is a const in main, but i dont want to create cycles.
-	if err != nil {
-		return err
-	}
-	//event/block/simulation relationship
-	blocksKey := a.Attributes.GetStringOrFail("blocks_datasource_key")
-	blocksInput, err := a.GetInputDataSource(blocksKey) //expecting this to be tiledb
-	if err != nil {
-		return err
-	}
-	blocks, err := utils.ReadBlocksFromTiledb(pm, blocksInput.StoreName, blocksInput.Name)
+
+	blocks, err := utils.GetBlocks(pm, a)
 	if err != nil {
 		return err
 	}

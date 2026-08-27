@@ -7,9 +7,9 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/usace/cc-go-sdk"
-	"github.com/usace/hms-mutator/hms"
-	"github.com/usace/hms-mutator/utils"
+	"github.com/usace-cloud-compute/cc-go-sdk"
+	"github.com/usace-cloud-compute/hms-mutator/hms"
+	"github.com/usace-cloud-compute/hms-mutator/utils"
 )
 
 func TestStratifiedLocations(t *testing.T) {
@@ -106,7 +106,7 @@ func TestValidStratifiedLocations(t *testing.T) {
 	for k, v := range output.StormMap {
 		fp := fmt.Sprintf("%v/%v.csv", root, k)
 		utils.WriteLocalBytes(v.ToBytes(), root, fp)
-		fmt.Print(fmt.Sprintf("%v: %v\n", k, len(v.Coordinates)))
+		fmt.Printf("%v: %v\n", k, len(v.Coordinates))
 	}
 	fp2 := fmt.Sprintf("%v/%v.csv", root, "AllStormsAllLocations")
 	fp3 := fmt.Sprintf("%v/%v.csv", root, "AllStormsValidLocations")
