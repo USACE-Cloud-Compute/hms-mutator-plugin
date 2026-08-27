@@ -47,6 +47,17 @@ func InitFullRealizationSST(a cc.Action) *FullSimulationSST {
 func (frsst *FullSimulationSST) Compute(pm *cc.PluginManager) error {
 	a := frsst.action
 	//get parameters
+	//time range of POR
+	porStartDateString := a.Attributes.GetStringOrFail("por_start_date")
+	porStartDate, err := time.Parse("20060102", porStartDateString)
+	if err != nil {
+		return err
+	}
+	porEndDateString := a.Attributes.GetStringOrFail("por_end_date")
+	porEndDate, err := time.Parse("20060102", porEndDateString)
+	if err != nil {
+		return err
+	}
 	//get output datasource
 	outputDataSourceKey := a.Attributes.GetStringOrFail("output_data_source")
 	outputDataSource, err := a.GetOutputDataSource(outputDataSourceKey)
@@ -71,12 +82,12 @@ func (frsst *FullSimulationSST) Compute(pm *cc.PluginManager) error {
 			return err
 		}
 	case "bootstrap":
-		sampler, err = utils.InitBootstrapSampler(stormList, samplingLevel)
+		sampler, err = utils.InitBootstrapSampler(stormList, samplingLevel, porStartDate)
 		if err != nil {
 			return err
 		}
 	case "jackknife":
-		sampler, err = utils.InitJackknifeSampler(stormList, samplingLevel)
+		sampler, err = utils.InitJackknifeSampler(stormList, samplingLevel, porStartDate)
 		if err != nil {
 			return err
 		}
@@ -111,17 +122,6 @@ func (frsst *FullSimulationSST) Compute(pm *cc.PluginManager) error {
 	//basin root directory
 	basinRootDir := a.Attributes.GetStringOrFail("basin_root_directory")
 	basinName := a.Attributes.GetStringOrFail("basin_name")
-	//time range of POR
-	porStartDateString := a.Attributes.GetStringOrFail("por_start_date")
-	porStartDate, err := time.Parse("20060102", porStartDateString)
-	if err != nil {
-		return err
-	}
-	porEndDateString := a.Attributes.GetStringOrFail("por_end_date")
-	porEndDate, err := time.Parse("20060102", porEndDateString)
-	if err != nil {
-		return err
-	}
 	//calibration event strings
 	calibrationEvents, err := a.Attributes.GetStringSlice("calibration_event_names")
 	if err != nil {
@@ -155,13 +155,13 @@ func compute(stormNames []string, calibrationEventNames []string, basinRootDir s
 	for _, b := range blocks {
 		//right here i would have logic to determine if the sampler needs to be updated for the list of storms at either the realization or block level
 		if sampler.SamplingLevel() == "block" {
-			sampler.SampleNames(b.BlockEventStart, seeds) //find the right event number at the start of a block
+			sampler.SampleNames(b.BlockEventStart, int64(b.RealizationIndex), seeds) //find the right event number at the start of a block
 		}
 		//
 		//or
 		if sampler.SamplingLevel() == "realization" {
 			if realizationIndex != int(b.RealizationIndex) {
-				sampler.SampleNames(b.BlockEventStart, seeds) //find the right event number at the start of a block
+				sampler.SampleNames(b.BlockEventStart, int64(b.RealizationIndex), seeds) //find the right event number at the start of a block
 				realizationIndex = int(b.RealizationIndex)
 			}
 		}
@@ -173,7 +173,7 @@ func compute(stormNames []string, calibrationEventNames []string, basinRootDir s
 					enRng := rand.New(rand.NewSource(seeds[en-1].EventSeed))
 					//right here i would have logic to determine if the sampler needs to be updated for the list of storms at the event level
 					if sampler.SamplingLevel() == "event" {
-						sampler.SampleNames(en, seeds) //unique bootstrap jackknife or best estimate catalog sample per event number
+						sampler.SampleNames(en, int64(b.RealizationIndex), seeds) //unique bootstrap jackknife or best estimate catalog sample per event number
 					}
 					//sample storm name
 					stormName := sampler.SampleName(enRng) //stormNames[enRng.Intn(len(stormNames))]

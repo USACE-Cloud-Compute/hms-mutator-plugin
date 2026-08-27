@@ -2,16 +2,15 @@ package utils
 
 import (
 	"math/rand"
-	"strconv"
+	"time"
 )
 
 type StormSampler interface {
-	SampleNames(event int64, seeds []SeedSet) error
+	SampleNames(event int64, realization int64, seeds []SeedSet) error
 	SampleName(rng *rand.Rand) string
 	SamplingLevel() string
 }
-
-type BootstrapSampler struct {
+type BaseSamplerData struct {
 	StormNames    []string
 	yearStormMap  map[int][]string
 	sampleNames   []string
@@ -19,33 +18,38 @@ type BootstrapSampler struct {
 	maxYear       int32
 	samplingLevel string
 }
+type BootstrapSampler struct {
+	*BaseSamplerData
+}
 
-func InitBootstrapSampler(Names []string, samplingLevel string) (*BootstrapSampler, error) {
-	//collect names into common years and sample as year groups
-	b := BootstrapSampler{}
+func initBaseSamplerData(Names []string, samplingLevel string, startDate time.Time) (*BaseSamplerData, error) {
+	b := BaseSamplerData{}
 	b.yearStormMap = make(map[int][]string)
-	minYear := 9999
+	minYear := startDate.Year()
 	maxYear := 0
 	for _, n := range Names {
 		//extract year from name.
 		//yyyymmdd_xxhr_storm-type_storm-rank
-		yyyy := n[0:4]
-		year, err := strconv.Atoi(yyyy)
+		year, err := time.Parse("20060102", n[0:8])
 		if err != nil {
 			return &b, err
 		}
-		storms, ok := b.yearStormMap[year]
+		adjustedYear := year.Year()
+		if year.YearDay() >= startDate.YearDay() {
+			adjustedYear += 1
+		}
+		storms, ok := b.yearStormMap[adjustedYear]
 		if ok {
 			storms = append(storms, n)
-			b.yearStormMap[year] = storms
+			b.yearStormMap[adjustedYear] = storms
 		} else {
-			b.yearStormMap[year] = []string{n}
+			b.yearStormMap[adjustedYear] = []string{n}
 		}
-		if year > maxYear {
-			maxYear = year
+		if adjustedYear > maxYear {
+			maxYear = adjustedYear
 		}
-		if year < minYear {
-			minYear = year
+		if adjustedYear < minYear {
+			minYear = adjustedYear
 		}
 	}
 	b.maxYear = int32(maxYear)
@@ -54,10 +58,18 @@ func InitBootstrapSampler(Names []string, samplingLevel string) (*BootstrapSampl
 	b.samplingLevel = samplingLevel
 	return &b, nil
 }
+func InitBootstrapSampler(Names []string, samplingLevel string, startdate time.Time) (*BootstrapSampler, error) {
+	bdata, err := initBaseSamplerData(Names, samplingLevel, startdate)
+	b := BootstrapSampler{BaseSamplerData: bdata}
+	if err != nil {
+		return &b, err
+	}
+	return &b, nil
+}
 func (b *BootstrapSampler) SamplingLevel() string {
 	return b.samplingLevel
 }
-func (b *BootstrapSampler) SampleNames(event int64, seeds []SeedSet) error {
+func (b *BootstrapSampler) SampleNames(event int64, realization int64, seeds []SeedSet) error {
 
 	stormCount := len(b.StormNames)
 	sample := make([]string, stormCount)
@@ -88,59 +100,28 @@ func (b *BootstrapSampler) SampleName(rng *rand.Rand) string {
 }
 
 type JackknifeSampler struct {
-	StormNames    []string
-	yearStormMap  map[int][]string
-	sampleNames   []string
-	minYear       int32
-	maxYear       int32
-	samplingLevel string
+	*BaseSamplerData
 }
 
-func InitJackknifeSampler(Names []string, samplingLevel string) (*JackknifeSampler, error) {
+func InitJackknifeSampler(Names []string, samplingLevel string, startdate time.Time) (*JackknifeSampler, error) {
 	//collect names into common years and sample as year groups
-	b := JackknifeSampler{}
-	b.yearStormMap = make(map[int][]string)
-	minYear := 9999
-	maxYear := 0
-	for _, n := range Names {
-		//extract year from name.
-		//yyyymmdd_xxhr_storm-type_storm-rank
-		yyyy := n[0:4]
-		year, err := strconv.Atoi(yyyy)
-		if err != nil {
-			return &b, err
-		}
-		storms, ok := b.yearStormMap[year]
-		if ok {
-			storms = append(storms, n)
-			b.yearStormMap[year] = storms
-		} else {
-			b.yearStormMap[year] = []string{n}
-		}
-		if year > maxYear {
-			maxYear = year
-		}
-		if year < minYear {
-			minYear = year
-		}
+	bdata, err := initBaseSamplerData(Names, samplingLevel, startdate)
+	b := JackknifeSampler{BaseSamplerData: bdata}
+	if err != nil {
+		return &b, err
 	}
-	b.maxYear = int32(maxYear)
-	b.minYear = int32(minYear)
-	b.StormNames = Names
-	b.samplingLevel = samplingLevel
 	return &b, nil
 }
 func (b *JackknifeSampler) SamplingLevel() string {
 	return b.samplingLevel
 }
-func (b *JackknifeSampler) SampleNames(event int64, seeds []SeedSet) error {
+func (b *JackknifeSampler) SampleNames(event int64, realization int64, seeds []SeedSet) error {
 
-	stormCount := len(b.StormNames)
 	// Initialize with 0 length but pre-allocate capacity for performance
-	sample := make([]string, 0, stormCount)
-	rng := rand.New(rand.NewSource(seeds[event].EventSeed)) // check with haden.
-	delta := b.maxYear - b.minYear - 5
-	skipYearMin := b.minYear + rng.Int31n(delta) //need to make this a min skip year and a max skip year...
+	sample := make([]string, 0)
+	delta := b.maxYear - b.minYear - 5 + 1
+	modReal := int32(realization) % delta
+	skipYearMin := b.minYear + modReal
 	skipYearMax := skipYearMin + 5
 
 	for year := b.minYear; year <= b.maxYear; year++ {
@@ -175,7 +156,7 @@ func InitBestEstimateSampler(Names []string, samplingLevel string) (*BestEstimat
 func (b *BestEstimateSampler) SamplingLevel() string {
 	return b.samplingLevel
 }
-func (b *BestEstimateSampler) SampleNames(event int64, seeds []SeedSet) error {
+func (b *BestEstimateSampler) SampleNames(event int64, realization int64, seeds []SeedSet) error {
 	return nil
 }
 func (b *BestEstimateSampler) SampleName(rng *rand.Rand) string {
