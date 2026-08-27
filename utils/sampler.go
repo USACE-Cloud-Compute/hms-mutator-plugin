@@ -8,17 +8,19 @@ import (
 type StormSampler interface {
 	SampleNames(event int64, seeds []SeedSet) error
 	SampleName(rng *rand.Rand) string
+	SamplingLevel() string
 }
 
 type BootstrapSampler struct {
-	StormNames   []string
-	yearStormMap map[int][]string
-	sampleNames  []string
-	minYear      int32
-	maxYear      int32
+	StormNames    []string
+	yearStormMap  map[int][]string
+	sampleNames   []string
+	minYear       int32
+	maxYear       int32
+	samplingLevel string
 }
 
-func InitBootstrapSampler(Names []string) (*BootstrapSampler, error) {
+func InitBootstrapSampler(Names []string, samplingLevel string) (*BootstrapSampler, error) {
 	//collect names into common years and sample as year groups
 	b := BootstrapSampler{}
 	b.yearStormMap = make(map[int][]string)
@@ -49,7 +51,11 @@ func InitBootstrapSampler(Names []string) (*BootstrapSampler, error) {
 	b.maxYear = int32(maxYear)
 	b.minYear = int32(minYear)
 	b.StormNames = Names
+	b.samplingLevel = samplingLevel
 	return &b, nil
+}
+func (b *BootstrapSampler) SamplingLevel() string {
+	return b.samplingLevel
 }
 func (b *BootstrapSampler) SampleNames(event int64, seeds []SeedSet) error {
 
@@ -82,14 +88,15 @@ func (b *BootstrapSampler) SampleName(rng *rand.Rand) string {
 }
 
 type JackknifeSampler struct {
-	StormNames   []string
-	yearStormMap map[int][]string
-	sampleNames  []string
-	minYear      int32
-	maxYear      int32
+	StormNames    []string
+	yearStormMap  map[int][]string
+	sampleNames   []string
+	minYear       int32
+	maxYear       int32
+	samplingLevel string
 }
 
-func InitJackknifeSampler(Names []string) (*JackknifeSampler, error) {
+func InitJackknifeSampler(Names []string, samplingLevel string) (*JackknifeSampler, error) {
 	//collect names into common years and sample as year groups
 	b := JackknifeSampler{}
 	b.yearStormMap = make(map[int][]string)
@@ -120,7 +127,11 @@ func InitJackknifeSampler(Names []string) (*JackknifeSampler, error) {
 	b.maxYear = int32(maxYear)
 	b.minYear = int32(minYear)
 	b.StormNames = Names
+	b.samplingLevel = samplingLevel
 	return &b, nil
+}
+func (b *JackknifeSampler) SamplingLevel() string {
+	return b.samplingLevel
 }
 func (b *JackknifeSampler) SampleNames(event int64, seeds []SeedSet) error {
 
@@ -151,13 +162,18 @@ func (b *JackknifeSampler) SampleName(rng *rand.Rand) string {
 }
 
 type BestEstimateSampler struct {
-	StormNames []string
+	StormNames    []string
+	samplingLevel string
 }
 
-func InitBestEstimateSampler(Names []string) (*BestEstimateSampler, error) {
+func InitBestEstimateSampler(Names []string, samplingLevel string) (*BestEstimateSampler, error) {
 	b := BestEstimateSampler{}
 	b.StormNames = Names
+	b.samplingLevel = samplingLevel
 	return &b, nil
+}
+func (b *BestEstimateSampler) SamplingLevel() string {
+	return b.samplingLevel
 }
 func (b *BestEstimateSampler) SampleNames(event int64, seeds []SeedSet) error {
 	return nil

@@ -65,6 +65,7 @@ The configuration for this action is fully defined in the action itself, no glob
 -  seed_datasource_key: the name of the seed datasource
 -  blocks_datasource_key: the name of the blocks datasource
 -  sampling_method: the sampling type bootstrap, jackknife or best_estimate (default)
+-  sampling_level: the sampling level when in the process do we perform the catalog resampling realization, block or event (default)
 
 ## inputs
 No environment variables are needed

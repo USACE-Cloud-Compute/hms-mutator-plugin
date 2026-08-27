@@ -62,20 +62,21 @@ func (frsst *FullSimulationSST) Compute(pm *cc.PluginManager) error {
 	}
 
 	samplingMethod := a.Attributes.GetStringOrDefault("sampling_method", "best_estimate")
+	samplingLevel := a.Attributes.GetStringOrDefault("sampling_level", "event")
 	var sampler utils.StormSampler
 	switch samplingMethod {
 	case "best_estimate":
-		sampler, err = utils.InitBestEstimateSampler(stormList)
+		sampler, err = utils.InitBestEstimateSampler(stormList, samplingLevel)
 		if err != nil {
 			return err
 		}
 	case "bootstrap":
-		sampler, err = utils.InitBootstrapSampler(stormList)
+		sampler, err = utils.InitBootstrapSampler(stormList, samplingLevel)
 		if err != nil {
 			return err
 		}
 	case "jackknife":
-		sampler, err = utils.InitJackknifeSampler(stormList)
+		sampler, err = utils.InitJackknifeSampler(stormList, samplingLevel)
 		if err != nil {
 			return err
 		}
@@ -160,15 +161,20 @@ func (frsst *FullSimulationSST) Compute(pm *cc.PluginManager) error {
 }
 func compute(stormNames []string, calibrationEventNames []string, basinRootDir string, basinName string, fishnets utils.FishNetMap, fishnettypeorname string, seasonalDistributions utils.StormTypeSeasonalityDistributionMap, porStart time.Time, porEnd time.Time, seeds []utils.SeedSet, blocks []utils.Block, sampler utils.StormSampler) (FullSimulationResult, error) {
 	results := make(FullSimulationResult, 0)
-	//realizationIndex := -1
+	realizationIndex := -1
 	for _, b := range blocks {
 		//right here i would have logic to determine if the sampler needs to be updated for the list of storms at either the realization or block level
-		//sampler.SampleNames(b.BlockEventStart,seeds)//find the right event number at the start of a block
+		if sampler.SamplingLevel() == "block" {
+			sampler.SampleNames(b.BlockEventStart, seeds) //find the right event number at the start of a block
+		}
+		//
 		//or
-		//if realizationIndex != int(b.RealizationIndex){
-		//	sampler.SampleNames(b.BlockEventStart,seeds) //find the right event number at the start of a block
-		//	realizationIndex = int(b.RealizationIndex)
-		//}
+		if sampler.SamplingLevel() == "realization" {
+			if realizationIndex != int(b.RealizationIndex) {
+				sampler.SampleNames(b.BlockEventStart, seeds) //find the right event number at the start of a block
+				realizationIndex = int(b.RealizationIndex)
+			}
+		}
 
 		if b.BlockEventCount > 0 {
 			for en := b.BlockEventStart; en <= b.BlockEventEnd; en++ {
@@ -176,7 +182,9 @@ func compute(stormNames []string, calibrationEventNames []string, basinRootDir s
 				if int(en) <= len(seeds) {
 					enRng := rand.New(rand.NewSource(seeds[en-1].EventSeed))
 					//right here i would have logic to determine if the sampler needs to be updated for the list of storms at the event level
-					//sampler.SampleNames(en,seeds)
+					if sampler.SamplingLevel() == "event" {
+						sampler.SampleNames(en, seeds) //unique bootstrap jackknife or best estimate catalog sample per event number
+					}
 					//sample storm name
 					stormName := sampler.SampleName(enRng) //stormNames[enRng.Intn(len(stormNames))]
 					//calculate storm type from storm name
