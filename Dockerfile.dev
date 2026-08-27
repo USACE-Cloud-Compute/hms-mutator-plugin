@@ -1,7 +1,7 @@
 FROM ghcr.io/usace-cloud-compute/cc-tiledb-base:latest
 
 ARG TILEDB_LIB=/usr/local/lib/tiledb
-ARG GO_VERSION=1.23.9
+ARG GO_VERSION=1.27.0
 ARG TARGETARCH
 
 ENV PATH=/go/bin:$PATH

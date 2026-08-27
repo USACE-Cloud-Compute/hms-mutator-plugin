@@ -4,6 +4,7 @@ import (
 	"io"
 	"math"
 	"math/rand"
+	"os"
 	"strconv"
 	"strings"
 
@@ -87,6 +88,51 @@ func ReadFishNets(iomanager cc.IOManager, storeKey string, filePaths []string, f
 	store, err := iomanager.GetStore(storeKey)
 	if err != nil {
 		return FishNetMap, err
+	}
+	if store.StoreType == "FS" {
+		//root := store.Parameters.GetStringOrFail("root")
+
+		names := make([]string, len(filePaths))
+		coordinates := make([]CoordinateList, len(filePaths))
+
+		for i := 0; i < len(filePaths); i++ {
+
+			sem <- 1
+
+			go func(num int) error {
+				path := filePaths[num]
+				path = fmt.Sprintf("%v%v", fishnetdirectory, path)
+				//pathpart := strings.Replace(path, fmt.Sprintf("%v/", root), "", -1)
+				bytes, err := os.ReadFile(path)
+				if err != nil {
+					<-sem
+					return err
+				}
+				coordlist, err := BytesToCoordinateList(bytes)
+				if err != nil {
+					<-sem
+					return err
+				}
+				parts := strings.Split(path, "/")
+				lastpart := parts[len(parts)-1]
+				name := strings.Split(lastpart, ".")[0]
+				names[num] = name
+				coordinates[num] = coordlist
+				//FishNetMap[name] = coordlist
+				<-sem
+				return nil
+
+			}(i)
+
+		}
+		//wg.Wait()
+		for i := 0; i < cap(sem); i++ {
+			sem <- i
+		}
+		for i, n := range names {
+			FishNetMap[n] = coordinates[i]
+		}
+		return FishNetMap, nil
 	}
 	session, ok := store.Session.(*cc.FileDataStore[filestore.S3FS])
 	if !ok {

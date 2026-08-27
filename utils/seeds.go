@@ -1,9 +1,11 @@
 package utils
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 	"slices"
 
 	"github.com/usace-cloud-compute/cc-go-sdk"
@@ -36,6 +38,26 @@ func GetSeeds(a cc.Action) ([]SeedSet, error) {
 		seedReader := NewTileDbSeedReader(store, seedsDatasourceName, seedSetName)
 		return seedReader.Read()
 	} else {
+		store, err := a.GetStore(seedInput.StoreName)
+		if store.StoreType == "FS" {
+			//go direct to the files.
+			root := store.Parameters.GetStringOrFail("root")
+			inputdatasource, err := a.IOManager.GetInputDataSource(seedsDatasourceName)
+			if err != nil {
+				return nil, err
+			}
+			path := inputdatasource.Paths[jsonDatasourcePathKey]
+			data, err := os.ReadFile(fmt.Sprintf("%v/%v", root, path))
+			if err != nil {
+				return nil, err
+			}
+			reader := bytes.NewReader(data)
+			readCloser := io.NopCloser(reader)
+			seedReader := NewJsonSeedReader(readCloser)
+			defer seedReader.Close()
+
+			return seedReader.Read()
+		}
 		//use json
 		reader, err := a.GetReader(cc.DataSourceOpInput{
 			DataSourceName: seedsDatasourceName,

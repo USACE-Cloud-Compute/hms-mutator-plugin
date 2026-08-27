@@ -1,10 +1,10 @@
 package actions
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"math/rand"
+	"os"
 	"strings"
 
 	"time"
@@ -262,14 +262,34 @@ func writeResultsToTileDB(pm *cc.PluginManager, storeKey string, results FullSim
 	return recordset.Write(&results)
 }
 func writeResultsToCSV(iomanager cc.IOManager, ds cc.DataSource, results FullSimulationResult) error {
-	//create a header
-	data := "event_number,storm_path,x,y,storm_type,storm_date,basin_path"
+
+	var sb strings.Builder
+
+	//Write the CSV header
+	sb.WriteString("event_number,storm_path,x,y,storm_type,storm_date,basin_path")
+
 	for _, r := range results {
-		data = fmt.Sprintf("%v\n%v,%v,%v,%v,%v,%v,%v", data, r.EventNumber, r.StormPath, r.X, r.Y, r.StormType, r.StormDate, r.BasinPath)
+		sb.WriteString("\n")
+		sb.WriteString(fmt.Sprintf("%v,%v,%v,%v,%v,%v,%v", r.EventNumber, r.StormPath, r.X, r.Y, r.StormType, r.StormDate, r.BasinPath))
 	}
-	bytedata := []byte(data)
-	writer := bytes.NewReader(bytedata)
-	_, err := iomanager.Put(cc.PutOpInput{
+
+	store, err := iomanager.GetStore(ds.StoreName)
+	if err != nil {
+		return err
+	}
+	writer := strings.NewReader(sb.String())
+	if store.StoreType == "FS" {
+		root := store.Parameters.GetStringOrFail("root")
+		if err != nil {
+			return err
+		}
+		path := ds.Paths["default"]
+		fullpath := fmt.Sprintf("%v/%v", root, path)
+		os.WriteFile(fullpath, []byte(sb.String()), 0600)
+		return nil
+	}
+
+	_, err = iomanager.Put(cc.PutOpInput{
 		SrcReader:         writer,
 		DataSourceOpInput: cc.DataSourceOpInput{DataSourceName: ds.Name, PathKey: "default"},
 	})
