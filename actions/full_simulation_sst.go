@@ -73,7 +73,7 @@ func (frsst *FullSimulationSST) Compute(pm *cc.PluginManager) error {
 	}
 
 	samplingMethod := a.Attributes.GetStringOrDefault("sampling_method", "best_estimate")
-	samplingLevel := a.Attributes.GetStringOrDefault("sampling_level", "event")
+	samplingLevel := a.Attributes.GetStringOrDefault("sampling_level", "realization")
 	var sampler utils.StormSampler
 	switch samplingMethod {
 	case "best_estimate":
