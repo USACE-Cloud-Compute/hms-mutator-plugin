@@ -3,6 +3,7 @@ package utils
 import (
 	"fmt"
 	"io"
+	"os"
 	"strconv"
 	"strings"
 
@@ -60,6 +61,25 @@ func ReadStormDistributions(iomanager cc.IOManager, storeKey string, filePaths [
 	store, err := iomanager.GetStore(storeKey)
 	if err != nil {
 		return StormTypeSeasonalityDistributionMap, err
+	}
+	if store.StoreType == "FS" {
+		for _, path := range filePaths {
+			path = fmt.Sprintf("%v%v", directory, path)
+			bytes, err := os.ReadFile(path)
+
+			if err != nil {
+				return StormTypeSeasonalityDistributionMap, err
+			}
+			dist := DescreteEmpiricalDistributionFromBytes(bytes)
+			if err != nil {
+				return StormTypeSeasonalityDistributionMap, err
+			}
+			parts := strings.Split(path, "/")
+			lastpart := parts[len(parts)-1]
+			name := strings.Split(lastpart, ".")[0]
+			StormTypeSeasonalityDistributionMap[name] = dist
+		}
+		return StormTypeSeasonalityDistributionMap, nil
 	}
 	session, ok := store.Session.(*cc.FileDataStore[filestore.S3FS])
 	if !ok {

@@ -5,6 +5,10 @@ import (
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/usace-cloud-compute/cc-go-sdk"
+	tiledb "github.com/usace-cloud-compute/cc-go-sdk/tiledb-store"
+	"github.com/usace-cloud-compute/hms-mutator/utils"
 )
 
 func Test_Main(t *testing.T) {
@@ -26,67 +30,46 @@ func Test_RenameStorms(t *testing.T) {
 	}
 }
 func Test_UpdateGridFileStormNames(t *testing.T) {
-	gridFilePath := "/workspaces/hms-mutator/exampledata/trinity/catalog.grid"
+	gridFilePath := "/workspaces/hms-mutator/exampledata/trinity/trinity.grid"
 	data, err := os.ReadFile(gridFilePath)
 	if err != nil {
 		t.Fail()
 	}
 	stringdata := string(data)
-	lines := strings.Split(stringdata, "\n")
-	//search for Grid:
-	//search for "     Grid: "
-	//search for "     Filename: " /these should all contain the same string. replace the parts to match the new convention.
-	firstGrid := ""
-	secondGrid := ""
-	//filename := ""
-	firstGridLine := 0
-	secondGridLine := 0
-	filenameGridLine := 0
-	isPrecip := false
-	for i, line := range lines {
-
-		if strings.Contains(line, "Grid: ") {
-			isPrecip = false
-			if strings.Contains(line, "     Grid: ") {
-				secondGrid = strings.Split(line, ": ")[1]
-				secondGridLine = i
-			} else {
-				firstGrid = strings.Split(line, ": ")[1]
-				firstGridLine = i
-			}
-		}
-		if strings.Contains(line, "     Filename: ") {
-			//filename = strings.Split(line, ": ")[1]
-			filenameGridLine = i
-			if isPrecip {
-				if firstGrid == secondGrid {
-					//parse the gridname
-					nameParts := strings.Split(firstGrid, " ")
-					date := nameParts[1]
-					rank := nameParts[2]
-					rank = strings.Replace(rank, "T", "r", -1)
-					stormType := nameParts[3]
-					dateParts := strings.Split(date, "-")
-					year := dateParts[0]
-					month := dateParts[1]
-					day := dateParts[2]
-					newName := fmt.Sprintf("%v%v%v_72hr_%v_%v", year, month, day, stormType, rank)
-					lines[firstGridLine] = fmt.Sprintf("Grid: %v", newName)
-					lines[secondGridLine] = fmt.Sprintf("     Grid: %v", newName)
-					lines[filenameGridLine] = fmt.Sprintf("     Filename: data\\%v.dss", newName)
-				}
-			}
-
-		}
-		if strings.Contains(line, "     Grid Type: Precipitation") {
-			isPrecip = true
-		}
+	//fmt.Print(stringdata)
+	cc.DataStoreTypeRegistry.Register("TILEDB", tiledb.TileDbEventStore{})
+	pm, err := cc.InitPluginManager()
+	if err != nil {
+		t.Fail()
 	}
-	newString := ""
-	for _, line := range lines {
-		newString = fmt.Sprintf("%v%v\n", newString, line)
+	a := pm.Actions[0]
+	///get storms
+	stormDirectory := a.Attributes.GetStringOrFail("storms_directory")
+	stormsStoreKey := a.Attributes.GetStringOrFail("storms_store") //expecting this to be an s3 bucket?
+	stormList, err := utils.ListAllPaths(a.IOManager, stormsStoreKey, stormDirectory, "*.dss")
+	if err != nil {
+		t.Fail()
 	}
-	newdata := make([]byte, 0)
-	newdata = append(newdata, newString...)
-	os.WriteFile(gridFilePath, newdata, 0600)
+	//fmt.Print(stormList)
+
+	//take the storm names, use them to find their precip and grids in the grid file
+	for _, sn := range stormList {
+
+		rank := sn[18:22]
+		//sn = strings.Replace(sn, "st", "ST", -1)
+		sn = sn[0 : len(sn)-4]
+		fmt.Print(sn + ",")
+		//fmt.Println(rank)
+		pos := strings.Index(stringdata, rank)
+		//add 18 to the front add 4 to the end
+		startpos := pos - 18
+		endpos := pos + 4
+		name := stringdata[startpos:endpos]
+
+		//fmt.Println(name)
+		stringdata = strings.Replace(stringdata, name, sn, -1)
+	}
+	fmt.Println("")
+	newdata := []byte(stringdata)
+	os.WriteFile("/workspaces/hms-mutator/exampledata/trinity/trinity2.grid", newdata, 0600)
 }

@@ -14,7 +14,7 @@
                 "-test.run",
                 "Test_Main"
             ],
-            "envFile": "/workspaces/.env"
+            "envFile": "/workspaces/hms-mutator/exampledata/envfiles/.env-bestestimate"
         },{
             "name": "Test Fishnets",
             "type": "go",

@@ -1,8 +1,11 @@
 package utils
 
 import (
+	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
+	"os"
 
 	"github.com/usace-cloud-compute/cc-go-sdk"
 )
@@ -31,9 +34,9 @@ func GetBlocks(pm *cc.PluginManager, a cc.Action) ([]Block, error) {
 
 	useTileDb := a.Attributes.GetBooleanOrDefault(useTileDbStore, false)
 	blocksKey := a.Attributes.GetStringOrFail(blocksDataSourceAttrKey)
-
+	blocksInput, err := a.GetInputDataSource(blocksKey) //expecting this to be tiledb
 	if useTileDb {
-		blocksInput, err := a.GetInputDataSource(blocksKey) //expecting this to be tiledb
+
 		if err != nil {
 			return nil, err
 		}
@@ -41,6 +44,26 @@ func GetBlocks(pm *cc.PluginManager, a cc.Action) ([]Block, error) {
 		blockReader := NewTileDbBlockReader(pm, blocksInput.StoreName, blocksInput.Name)
 		return blockReader.Read()
 	} else {
+		store, err := a.GetStore(blocksInput.StoreName)
+		if store.StoreType == "FS" {
+			//go direct to the files.
+			root := store.Parameters.GetStringOrFail("root")
+			inputdatasource, err := a.IOManager.GetInputDataSource(blocksKey)
+			if err != nil {
+				return nil, err
+			}
+			path := inputdatasource.Paths[jsonDatasourcePathKey]
+			data, err := os.ReadFile(fmt.Sprintf("%v/%v", root, path))
+			if err != nil {
+				return nil, err
+			}
+			reader := bytes.NewReader(data)
+			readCloser := io.NopCloser(reader)
+			blockReader := NewJsonBlockReader(readCloser)
+			defer blockReader.Close()
+
+			return blockReader.Read()
+		}
 		jsonFileReader, err := a.GetReader(cc.DataSourceOpInput{
 			DataSourceName: blocksKey,
 			PathKey:        jsonBlocksPathKey,

@@ -1,9 +1,10 @@
 package actions
 
 import (
-	"bytes"
+	"errors"
 	"fmt"
 	"math/rand"
+	"os"
 	"strings"
 
 	"time"
@@ -46,6 +47,17 @@ func InitFullRealizationSST(a cc.Action) *FullSimulationSST {
 func (frsst *FullSimulationSST) Compute(pm *cc.PluginManager) error {
 	a := frsst.action
 	//get parameters
+	//time range of POR
+	porStartDateString := a.Attributes.GetStringOrFail("por_start_date")
+	porStartDate, err := time.Parse("20060102", porStartDateString)
+	if err != nil {
+		return err
+	}
+	porEndDateString := a.Attributes.GetStringOrFail("por_end_date")
+	porEndDate, err := time.Parse("20060102", porEndDateString)
+	if err != nil {
+		return err
+	}
 	//get output datasource
 	outputDataSourceKey := a.Attributes.GetStringOrFail("output_data_source")
 	outputDataSource, err := a.GetOutputDataSource(outputDataSourceKey)
@@ -59,7 +71,30 @@ func (frsst *FullSimulationSST) Compute(pm *cc.PluginManager) error {
 	if err != nil {
 		return err
 	}
-	//if i wanted to bootstrap, i could bootstrap the storm list now...
+
+	samplingMethod := a.Attributes.GetStringOrDefault("sampling_method", "best_estimate")
+	samplingLevel := a.Attributes.GetStringOrDefault("sampling_level", "realization")
+	var sampler utils.StormSampler
+	switch samplingMethod {
+	case "best_estimate":
+		sampler, err = utils.InitBestEstimateSampler(stormList, samplingLevel)
+		if err != nil {
+			return err
+		}
+	case "bootstrap":
+		sampler, err = utils.InitBootstrapSampler(stormList, samplingLevel, porStartDate)
+		if err != nil {
+			return err
+		}
+	case "jackknife":
+		sampler, err = utils.InitJackknifeSampler(stormList, samplingLevel, porStartDate)
+		if err != nil {
+			return err
+		}
+	default:
+
+		return errors.New("samlper type not defined " + samplingMethod)
+	}
 
 	///use fishnets to figure out placements - select from list of valid placements. fishnets are currently expected to be unique to each storm... could be converted to be unique to each storm type.
 	fishnetDirectory := a.Attributes.GetStringOrFail("fishnet_directory")
@@ -87,17 +122,6 @@ func (frsst *FullSimulationSST) Compute(pm *cc.PluginManager) error {
 	//basin root directory
 	basinRootDir := a.Attributes.GetStringOrFail("basin_root_directory")
 	basinName := a.Attributes.GetStringOrFail("basin_name")
-	//time range of POR
-	porStartDateString := a.Attributes.GetStringOrFail("por_start_date")
-	porStartDate, err := time.Parse("20060102", porStartDateString)
-	if err != nil {
-		return err
-	}
-	porEndDateString := a.Attributes.GetStringOrFail("por_end_date")
-	porEndDate, err := time.Parse("20060102", porEndDateString)
-	if err != nil {
-		return err
-	}
 	//calibration event strings
 	calibrationEvents, err := a.Attributes.GetStringSlice("calibration_event_names")
 	if err != nil {
@@ -113,8 +137,7 @@ func (frsst *FullSimulationSST) Compute(pm *cc.PluginManager) error {
 	if err != nil {
 		return err
 	}
-
-	results, err := compute(stormList, calibrationEvents, basinRootDir, basinName, fishNetMap, fishnettypeorname, stormTypeSeasonalityDistributionsMap, porStartDate, porEndDate, seeds, blocks)
+	results, err := compute(stormList, calibrationEvents, basinRootDir, basinName, fishNetMap, fishnettypeorname, stormTypeSeasonalityDistributionsMap, porStartDate, porEndDate, seeds, blocks, sampler)
 	if err != nil {
 		return err
 	}
@@ -126,18 +149,36 @@ func (frsst *FullSimulationSST) Compute(pm *cc.PluginManager) error {
 	}
 
 }
-func compute(stormNames []string, calibrationEventNames []string, basinRootDir string, basinName string, fishnets utils.FishNetMap, fishnettypeorname string, seasonalDistributions utils.StormTypeSeasonalityDistributionMap, porStart time.Time, porEnd time.Time, seeds []utils.SeedSet, blocks []utils.Block) (FullSimulationResult, error) {
+func compute(stormNames []string, calibrationEventNames []string, basinRootDir string, basinName string, fishnets utils.FishNetMap, fishnettypeorname string, seasonalDistributions utils.StormTypeSeasonalityDistributionMap, porStart time.Time, porEnd time.Time, seeds []utils.SeedSet, blocks []utils.Block, sampler utils.StormSampler) (FullSimulationResult, error) {
 	results := make(FullSimulationResult, 0)
+	realizationIndex := -1
 	for _, b := range blocks {
+		//right here i would have logic to determine if the sampler needs to be updated for the list of storms at either the realization or block level
+		if sampler.SamplingLevel() == "block" {
+			sampler.SampleNames(b.BlockEventStart, int64(b.RealizationIndex), seeds) //find the right event number at the start of a block
+		}
+		//
+		//or
+		if sampler.SamplingLevel() == "realization" {
+			if realizationIndex != int(b.RealizationIndex) {
+				sampler.SampleNames(b.BlockEventStart, int64(b.RealizationIndex), seeds) //find the right event number at the start of a block
+				realizationIndex = int(b.RealizationIndex)
+			}
+		}
+
 		if b.BlockEventCount > 0 {
 			for en := b.BlockEventStart; en <= b.BlockEventEnd; en++ {
 				//create random number generator for event
 				if int(en) <= len(seeds) {
 					enRng := rand.New(rand.NewSource(seeds[en-1].EventSeed))
+					//right here i would have logic to determine if the sampler needs to be updated for the list of storms at the event level
+					if sampler.SamplingLevel() == "event" {
+						sampler.SampleNames(en, int64(b.RealizationIndex), seeds) //unique bootstrap jackknife or best estimate catalog sample per event number
+					}
 					//sample storm name
-					stormName := stormNames[enRng.Intn(len(stormNames))]
+					stormName := sampler.SampleName(enRng) //stormNames[enRng.Intn(len(stormNames))]
 					//calculate storm type from storm name
-					stormType := strings.Split(stormName, "_")[2] //assuming yyyymmdd_xxhr_data-type_storm-type_storm-rank - if data-type is dropped as i hope this needs to be updated to 2
+					stormType := strings.Split(stormName, "_")[2] //assuming yyyymmdd_xxhr_storm-type_storm-rank
 					//sample calibration event
 					calibrationEvent := calibrationEventNames[enRng.Intn(len(calibrationEventNames))]
 					//fetch fishnet based on storm name -
@@ -221,14 +262,34 @@ func writeResultsToTileDB(pm *cc.PluginManager, storeKey string, results FullSim
 	return recordset.Write(&results)
 }
 func writeResultsToCSV(iomanager cc.IOManager, ds cc.DataSource, results FullSimulationResult) error {
-	//create a header
-	data := "event_number,storm_path,x,y,storm_type,storm_date,basin_path"
+
+	var sb strings.Builder
+
+	//Write the CSV header
+	sb.WriteString("event_number,storm_path,x,y,storm_type,storm_date,basin_path")
+
 	for _, r := range results {
-		data = fmt.Sprintf("%v\n%v,%v,%v,%v,%v,%v,%v", data, r.EventNumber, r.StormPath, r.X, r.Y, r.StormType, r.StormDate, r.BasinPath)
+		sb.WriteString("\n")
+		sb.WriteString(fmt.Sprintf("%v,%v,%v,%v,%v,%v,%v", r.EventNumber, r.StormPath, r.X, r.Y, r.StormType, r.StormDate, r.BasinPath))
 	}
-	bytedata := []byte(data)
-	writer := bytes.NewReader(bytedata)
-	_, err := iomanager.Put(cc.PutOpInput{
+
+	store, err := iomanager.GetStore(ds.StoreName)
+	if err != nil {
+		return err
+	}
+	writer := strings.NewReader(sb.String())
+	if store.StoreType == "FS" {
+		root := store.Parameters.GetStringOrFail("root")
+		if err != nil {
+			return err
+		}
+		path := ds.Paths["default"]
+		fullpath := fmt.Sprintf("%v/%v", root, path)
+		os.WriteFile(fullpath, []byte(sb.String()), 0600)
+		return nil
+	}
+
+	_, err = iomanager.Put(cc.PutOpInput{
 		SrcReader:         writer,
 		DataSourceOpInput: cc.DataSourceOpInput{DataSourceName: ds.Name, PathKey: "default"},
 	})
