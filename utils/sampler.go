@@ -72,7 +72,7 @@ func (b *BootstrapSampler) SamplingLevel() string {
 func (b *BootstrapSampler) SampleNames(event int64, realization int64, seeds []SeedSet) error {
 
 	stormCount := len(b.StormNames)
-	sample := make([]string, stormCount)
+	sample := make([]string, 0)
 	rng := rand.New(rand.NewSource(seeds[event].EventSeed)) //check with haden.
 	delta := b.maxYear - b.minYear
 	i := 0
@@ -118,11 +118,12 @@ func (b *JackknifeSampler) SamplingLevel() string {
 func (b *JackknifeSampler) SampleNames(event int64, realization int64, seeds []SeedSet) error {
 
 	// Initialize with 0 length but pre-allocate capacity for performance
+	numYearsToGroup := 5 //consider making this a parameter
 	sample := make([]string, 0)
-	delta := b.maxYear - b.minYear - 5 + 1
+	delta := b.maxYear - b.minYear - int32(numYearsToGroup) + 1
 	modReal := int32(realization) % delta
-	skipYearMin := b.minYear + modReal
-	skipYearMax := skipYearMin + 5
+	skipYearMin := b.minYear + modReal - 1
+	skipYearMax := skipYearMin + int32(numYearsToGroup)
 
 	for year := b.minYear; year <= b.maxYear; year++ {
 		if year >= skipYearMin && year <= skipYearMax {
